@@ -136,7 +136,9 @@ controllers.updateOneUser = (req, res)=>{
     const startUpdate = ()=>{
         const query = `UPDATE users SET ? WHERE id = ?
         AND NOT EXISTS (
-            SELECT 1 FROM users WHERE username = ? AND id != ?
+            SELECT 1 
+            FROM (SELECT * FROM users) AS u 
+            WHERE u.username = ? AND u.id != ?
         )`;
         dataBase.query(query, [payload, id, payload.username, id], (error, data)=>{
                         console.log("🚀 ~ file: Users.controller.js:141 ~ dataBase.query ~ error:", error)
@@ -145,7 +147,13 @@ controllers.updateOneUser = (req, res)=>{
             if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية تحديث بيانات المستخدم, إحتمال وجود نفس إسم المستخدم الذي ادخلته من قبل!.'});
             res.json({success:true, msg:'تم تحديث بيانات المستخدم بنجاح.'})
         });
-
+        /*
+        // This query doesn't works on the online server!
+        const query = `UPDATE users SET ? WHERE id = ?
+        AND NOT EXISTS (
+            SELECT 1 FROM users WHERE username = ? AND id != ?
+        )`;
+        */
     }
     // Handel Validator Erorrs
     const formError = validationResult(req);
