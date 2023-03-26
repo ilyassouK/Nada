@@ -38,6 +38,7 @@ controllers.addItem = (req, res)=>{
         const createItemQuery = "INSERT INTO items SET ?";
         connection.query(createItemQuery, [payload], (error, data)=>{
           if(error){
+            console.log("🚀 ~ file: Items.controller.js:41 ~ connection.query ~ error:", error)
             return connection.rollback(()=>{
               connection.release();
               res.json({success:false, msg:"هناك خطأ ما في إضافة صنف جديد!"})
