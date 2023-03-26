@@ -239,6 +239,7 @@ controllers.attendingProducts = (req, res)=>{
   const employeeId = tokenData.id;
   const productId = req.body.productId
   const status = req.body.status;
+  console.log("🚀 ~ file: Products.controller.js:242 ~ req.body:", req.body)
 
   // Step1: From the transactions table and based on product_id (barcode) Get the last client_id of that product.
   let query = "SELECT client_id FROM transactions WHERE product_id = ? ORDER BY created_at DESC LIMIT 1"
@@ -257,6 +258,7 @@ controllers.attendingProducts = (req, res)=>{
     dataBase.query(query, [trackData], (error, data)=>{
       console.log(error)
       if(error) return res.json({success:false, msg:"هناك خطأ ما في تسجيل حضور هذا المنتج!"});
+      console.log("🚀 ~ file: Products.controller.js:262 ~ dataBase.query ~ data.affectedRows:", data.affectedRows)
       if(data.affectedRows < 1) return res.json({success:false, msg:"فشلت عملية تسجيل حضور هذا المنتج!"});
       res.json({success:true, msg:"رائع, لقد تم تسجيل حضورك على المنتج بنجاح."})
     })
