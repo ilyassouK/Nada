@@ -244,7 +244,7 @@ controllers.attendingProducts = (req, res)=>{
   const findClintQuery = "SELECT client_id FROM transactions WHERE product_id = ? ORDER BY created_at DESC LIMIT 1"
   dataBase.query(findClintQuery, [productId], (error, data)=>{
     if(error) return res.json({success:false, msg:"هناك خطأ ما في إيجاد المحل!"});
-    if(!data[0].client_id) return res.json({success:false, msg:`عذراً, هذا المنتج (رقم ${productId}) غير مسجل عند اي محل!`})
+    if(!data.length || !data[0].client_id) return res.json({success:false, msg:`عذراً, هذا المنتج (رقم ${productId}) غير مسجل عند اي محل!`})
     const clientId = data[0].client_id
 
     let trackData = {
@@ -271,7 +271,6 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   
 
   query = `SELECT
-                DISTINCT
                 product_tracking.id,
                 product_tracking.employee_id AS employeeId,
                 product_tracking.product_id AS	productId,
