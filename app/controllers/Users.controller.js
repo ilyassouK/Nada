@@ -43,6 +43,7 @@ controllers.AddUser = (req, res)=>{
     // Step1 : Check username doesn't exists before
     let query = "SELECT id FROM users WHERE username = ?";
     dataBase.query(query,[username],(error, results)=>{
+        console.log("🚀 ~ file: Users.controller.js:47 ~ dataBase.query ~ error:", error)
         if(error) return res.json({success:false, msg:"حدث خطأ اثناء إضافة المستخدم, الرجاء المحاولة مجدداً."})
         // Exist
         if(results.length){
