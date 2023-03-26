@@ -239,11 +239,10 @@ controllers.attendingProducts = (req, res)=>{
   const employeeId = tokenData.id;
   const productId = req.body.productId
   const status = req.body.status;
-  console.log("🚀 ~ file: Products.controller.js:242 ~ req.body:", req.body)
 
   // Step1: From the transactions table and based on product_id (barcode) Get the last client_id of that product.
-  let query = "SELECT client_id FROM transactions WHERE product_id = ? ORDER BY created_at DESC LIMIT 1"
-  dataBase.query(query, [productId], (error, data)=>{
+  const findClintQuery = "SELECT client_id FROM transactions WHERE product_id = ? ORDER BY created_at DESC LIMIT 1"
+  dataBase.query(findClintQuery, [productId], (error, data)=>{
     if(error) return res.json({success:false, msg:"هناك خطأ ما في إيجاد المحل!"});
     if(!data[0].client_id) return res.json({success:false, msg:`عذراً, هذا المنتج (رقم ${productId}) غير مسجل عند اي محل!`})
     const clientId = data[0].client_id
@@ -254,11 +253,10 @@ controllers.attendingProducts = (req, res)=>{
       client_id:clientId,
       status:status
     }
-    let query = "INSERT INTO product_tracking SET ?"
-    dataBase.query(query, [trackData], (error, data)=>{
+    const saveTrackQuery = "INSERT INTO product_tracking SET ?"
+    dataBase.query(saveTrackQuery, [trackData], (error, data)=>{
       console.log(error)
       if(error) return res.json({success:false, msg:"هناك خطأ ما في تسجيل حضور هذا المنتج!"});
-      console.log("🚀 ~ file: Products.controller.js:262 ~ dataBase.query ~ data.affectedRows:", data.affectedRows)
       if(data.affectedRows < 1) return res.json({success:false, msg:"فشلت عملية تسجيل حضور هذا المنتج!"});
       res.json({success:true, msg:"رائع, لقد تم تسجيل حضورك على المنتج بنجاح."})
     })
