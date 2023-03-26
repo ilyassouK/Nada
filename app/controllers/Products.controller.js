@@ -271,6 +271,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   
 
   query = `SELECT
+                DISTINCT
                 product_tracking.id,
                 product_tracking.employee_id AS employeeId,
                 product_tracking.product_id AS	productId,
