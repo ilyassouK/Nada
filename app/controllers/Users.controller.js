@@ -138,6 +138,8 @@ controllers.updateOneUser = (req, res)=>{
             SELECT 1 FROM users WHERE username = ? AND id != ?
         )`;
         dataBase.query(query, [payload, id, payload.username, id], (error, data)=>{
+                        console.log("🚀 ~ file: Users.controller.js:141 ~ dataBase.query ~ error:", error)
+
             if(error) return res.json({success:false, msg:'عذراً حدث خطأ في تحديث بيانات المستخدم!'});
             if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية تحديث بيانات المستخدم, إحتمال وجود نفس إسم المستخدم الذي ادخلته من قبل!.'});
             res.json({success:true, msg:'تم تحديث بيانات المستخدم بنجاح.'})
