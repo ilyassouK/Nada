@@ -132,7 +132,7 @@ controllers.fetchTransactions = (req, res, next)=>{
                 transactions.receipt_date AS receiptDate,
                 transactions.return_date AS returnDate,
                 transactions.status, 
-                ${group == 1 ? `users.full_name AS employeeName,`:`clients.name AS clientName,`}
+                ${group == 1 ? `users.full_name AS employeeName,`:`clients.trade_name AS tradeName,`}
                 items.name AS itemName
             FROM transactions 
                 JOIN products ON products.id = transactions.product_id
@@ -224,7 +224,7 @@ controllers.returnBackProducts = (req, res, next) => {
                 });
               }
               connection.release();
-              return res.json({success: true, msg: "رائع, تم نقل العهُد بنجاح."});
+              return res.json({success: true, msg: "رائع, تم إعادة العهُد بنجاح."});
             });
           });
         });
@@ -280,7 +280,9 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 items.name AS itemName,
                 items.id AS itemId,
                 transactions.receipt_date AS receiptDate,
-                clients.name AS clientName
+                clients.name AS clientName,
+                users.full_name AS employeeName,
+                clients.trade_name AS tradeName
 
                 FROM product_tracking
 
@@ -314,6 +316,7 @@ controllers.deleteTracked = (req, res)=>{
 }
 controllers.covenant = (req, res)=>{
   let id = req.params.id; // Employee id
+  // if(tokenData.userType === 'employee' && id != tokenData.id) return res.json({success:false, msg:"Soory, you need the permission first."})
   query = `
     SELECT items.id AS itemId,
             users.full_name AS employeeName,
@@ -346,6 +349,7 @@ controllers.agreement = (req, res)=>{
   query = `
     SELECT items.id AS itemId,
             clients.name AS clientName,
+            clients.trade_name AS tradeName,
             clients.commercial_num AS commercialNum,
             items.name AS itemName,
             items.quantity AS restQuantity,
