@@ -367,7 +367,7 @@ controllers.agreement = (req, res)=>{
     GROUP BY items.id
   `
   dataBase.query(query, [id], (error, data)=>{
-    console.log("🚀 ~ file: Products.controller.js:371 ~ dataBase.query ~ msg:", msg)
+    console.log("🚀 ~ file: Products.controller.js:370 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:'عذراً حدث خطأ في جلب الأصناف!'});
     if(!data.length) return res.json({success:false, msg:'معذرة, فشلة عملية جلب اصناف المحل!'});
 
