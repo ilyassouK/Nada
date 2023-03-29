@@ -315,8 +315,8 @@ controllers.deleteTracked = (req, res)=>{
   })
 }
 controllers.covenant = (req, res)=>{
+  if(tokenData.userType === 'employee' && id != tokenData.id) return res.json({success:false, msg:"Soory, you need the permission first."})
   let id = req.params.id; // Employee id
-  // if(tokenData.userType === 'employee' && id != tokenData.id) return res.json({success:false, msg:"Soory, you need the permission first."})
   query = `
     SELECT items.id AS itemId,
             users.full_name AS employeeName,
@@ -356,18 +356,17 @@ controllers.agreement = (req, res)=>{
             items.unit,
             items.unit_price AS unitPrice,
             items.total_price AS totalPrice,
-            transactions.receipt_date AS receiptDate,
+            MAX(transactions.receipt_date) AS receiptDate,
             COUNT(transactions.id) AS quantity
     FROM transactions
     JOIN products ON transactions.product_id = products.id
     JOIN items ON items.id = products.item_id
     JOIN clients ON clients.id = transactions.client_id
     WHERE transactions.return_date IS NULL
-    AND clients.id = ?
+    AND clients.id = 6
     GROUP BY items.id
   `
   dataBase.query(query, [id], (error, data)=>{
-    console.log("🚀 ~ file: Products.controller.js:370 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:'عذراً حدث خطأ في جلب الأصناف!'});
     if(!data.length) return res.json({success:false, msg:'معذرة, فشلة عملية جلب اصناف المحل!'});
 
