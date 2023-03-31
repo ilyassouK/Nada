@@ -47,7 +47,7 @@ controllers.deliveryProducts = (req, res)=>{
                 connection.release();
                 return res.json({success:false, msg:"هناك خطأ ما في فتح الإتصال لنقل العُهد!"});
               }
-              // DB Transaction : 1. Start the Transaction
+              // DB Transaction : 2. Start the Transaction
               connection.beginTransaction((error)=>{
                 if(error){
                   connection.release();
@@ -234,7 +234,7 @@ controllers.returnBackProducts = (req, res, next) => {
     })
 };
 controllers.attendingProducts = (req, res)=>{
-  // if(tokenData.userType != "employee") return res.json({success:false, msg:'Only Employees can make this role'});
+  if(tokenData.userType != "employee") return res.json({success:false, msg:'Only Employees can make this role'});
 
   const employeeId = tokenData.id;
   const productId = req.body.productId
@@ -292,7 +292,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 JOIN users ON users.id = product_tracking.employee_id
                 JOIN clients ON clients.id = product_tracking.client_id
                 WHERE 1=1
-                ${search ? `AND (items.name LIKE '%${search}%' OR users.civil LIKE '%${search}%' OR clients.commercial_num LIKE '%${search}%' )`:''}
+                ${search ? `AND (users.full_name LIKE '%${search}%' OR clients.address_id LIKE '%${search}%' )`:''}
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom}' AND '${dateTo}' `:""}
@@ -363,7 +363,7 @@ controllers.agreement = (req, res)=>{
     JOIN items ON items.id = products.item_id
     JOIN clients ON clients.id = transactions.client_id
     WHERE transactions.return_date IS NULL
-    AND clients.id = 6
+    AND clients.id = ?
     GROUP BY items.id
   `
   dataBase.query(query, [id], (error, data)=>{

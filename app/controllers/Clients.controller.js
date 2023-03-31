@@ -4,22 +4,91 @@ const limit = 30;
 
 
 controllers.AddClient = (req, res)=>{
+    // Step1: Check if the address doesn't exists
+    // step2: Insert Address
+    // step3: Insert client with insertedId (of address table)
+    // Step4: Insert client with existed id (of address table)
+    
+    const address = req.body.address;
     let payload = {
         name:req.body.name,
         trade_name:req.body.tradeName,
         commercial_num:req.body.commercialNum,
         city:req.body.city,
-        address	:req.body.address,
+        address	:address,
         phone:req.body.phone
     }
-    let query = "INSERT INTO clients SET ?"
-    dataBase.query(query, [payload], (error, data)=>{
-        if(error) return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
-        return res.json({success:true, msg:`رائع, تم إضافة المحل بنجاح.`})
 
-    })
+    // DB Transaction : 1. Get connection from Pool
+    dataBase.getConnection((error, connection)=>{
+        if(error){
+            connection.release();
+            return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+        }
+        // DB Transaction : 2. Start the Transaction
+        connection.beginTransaction((error)=>{
+            if(error){
+                connection.release();
+                return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+            }
+            // Step1: Check if the address doesn't exists
+            const selectAddress = "SELECT id from clients_addresses WHERE name = ?"
+            connection.query(selectAddress, [address], (error, data)=>{
+                if(error){
+                    return connection.rollback(()=>{
+                        connection.release();
+                        res.json({success:false, msg:"حدث خطأ اثناء التحقق في العنوان!"});
+                    })
+                }
+                if(!data.length){
+                    //step2: Insert Address
+                    const insertAddressQuery = "INSERT INTO clients_addresses SET name = ?";
+                    connection.query(insertAddressQuery, [address], (error, data)=>{
+                        if(error || !data.affectedRows){
+                            return connection.rollback(()=>{
+                                connection.release();
+                                res.json({success:false, msg:"حدث خطأ اثناء إضافة العنوان العنوان!"});
+                            })
+                        }
+                        // step3: Insert client with insertedId (of address table)
+                        return insertClinet(data.insertId);
+        
+                    })
+                }else{
+                    // Step4: Insert client with existed id (of address table)
+                    return insertClinet(data[0].id);
+                }
+
+            });
+        });
+        //////////////////////////////////////////////////
+        const insertClinet = (id) =>{
+            payload.address_id = id;
+            let query = "INSERT INTO clients SET ?"
+            connection.query(query, [payload], (error, data)=>{
+                if(error || !data.affectedRows){
+                    console.log("🚀 ~ file: Clients.controller.js:26 ~ dataBase.getConnection ~ error:", error)
+
+                    return connection.rollback(()=>{
+                        connection.release();
+                        return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+                    })
+                }
+                connection.commit((error)=>{
+                    if(error){
+                        return connection.rollback(()=>{
+                            connection.release();
+                            res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+                        })
+                    }
+                    connection.release();
+                    return res.json({success:true, msg:`رائع, تم إضافة المحل بنجاح.`})
+                })
+            })    
+        }
+        //////////////////////////////////////////////////
+        });
 }
-
 controllers.fetchClients = (req, res, next)=>{
     let queryReq = req.query;
     let search = queryReq.search
@@ -31,7 +100,6 @@ controllers.fetchClients = (req, res, next)=>{
                 trade_name AS tradeName,
                 commercial_num AS commercialNum,
                 city,
-                address,
                 phone
             FROM clients
             ${search ? `WHERE (trade_name LIKE '%${search}%' OR name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
@@ -41,9 +109,8 @@ controllers.fetchClients = (req, res, next)=>{
             `;
     return next();
 }
-
 controllers.selectClients = (req, res, next)=>{
-    query = "SELECT id, trade_name AS tradeName FROM clients WHERE active = 1"
+    query = "SELECT id, trade_name AS tradeName, address_id AS addressId  FROM clients WHERE active = 1"
     return next();
 }
 controllers.deleteClients = (req, res)=>{
@@ -58,17 +125,21 @@ controllers.deleteClients = (req, res)=>{
 controllers.fetchOneClient = (req, res)=>{
     let id = req.params.id;
     query = `SELECT
-                id,
-                name,
-                trade_name AS tradeName,
-                commercial_num AS commercialNum,
-                city,
-                address,
-                phone
+                clients.id,
+                clients.name,
+                clients.trade_name AS tradeName,
+                clients.commercial_num AS commercialNum,
+                clients.city,
+                clients.phone,
+                clients.address_id AS addressId,
+                clients_addresses.name AS address
             FROM clients
-            WHERE id = ?
+            JOIN clients_addresses ON clients.address_id = clients_addresses.id
+            WHERE clients.id = ?
             `
     dataBase.query(query, [id], (error, data)=>{
+        console.log("🚀 ~ file: Clients.controller.js:140 ~ dataBase.query ~ error:", error)
+
         if(error) return res.json({success:false, msg:"هناك خطأ ما في جلب بيانات المحل!"});
         if(!data.length) return res.json({success:false, msg:'عذراً, فشلة عملية جلب بيانات المحل!'});
         delete data[0].created_at
@@ -85,7 +156,7 @@ controllers.updateOneClient = (req, res)=>{
         trade_name:req.body.tradeName,
         commercial_num:req.body.commercialNum,
         city:req.body.city,
-        address	:req.body.address,
+        address_id	:req.body.addressId,
         phone:req.body.phone
     }
     const query = `UPDATE clients SET ? WHERE id = ? 
@@ -98,5 +169,9 @@ controllers.updateOneClient = (req, res)=>{
         if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية تحديث بيانات المحل, إحتمال وجود نفس رقم السجل الذي ادخلته من قبل.'});
         res.json({success:true, msg:'تم تحديث بيانات المحل بنجاح.'})
     })
+}
+controllers.selectaddresses = (req, res, next)=>{
+    query = "SELECT id, name AS address FROM clients_addresses";
+    return next();
 }
 module.exports = controllers;

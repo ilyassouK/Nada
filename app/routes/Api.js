@@ -7,7 +7,7 @@ const {addItem, warehouseItems, selectItems, deleteItems, addNewUnit, fetchAllUn
 const {deliveryProducts, fetchTransactions, returnBackProducts, attendingProducts, fetchAttendedProducts, deleteTracked, covenant, agreement} = require('../controllers/Products.controller');
 const {fetchUsers, AddUser, deleteUsers, fetchOneUser, updateOneUser} = require('../controllers/Users.controller');
 const {selectEmployees} = require('../controllers/Employees.controller');
-const {AddClient, fetchClients, selectClients, deleteClients, fetchOneClient, updateOneClient} = require('../controllers/Clients.controller');
+const {AddClient, fetchClients, selectClients, deleteClients, fetchOneClient, updateOneClient, selectaddresses} = require('../controllers/Clients.controller');
 
 // ==== Items =======================================================================
 router.post('/v1/items/path0', managersToken, addItem); //إضافة صنف
@@ -60,6 +60,8 @@ router.get('/v1/clients/path2', managersToken, selectClients, nextDbProccess);
 router.post('/v1/clients/path3', adminToken, deleteClients); //حذف 
 router.get('/v1/clients/path4/:id', managersToken, fetchOneClient) // fetchOne
 router.post('/v1/clients/path5/:id', managersToken, updateOneClient) // updateOneClient
+router.get('/v1/clients/path6', managersToken, selectaddresses, nextDbProccess); // used in AddClient.vue(on add), Observed.vue & ProductsDelivery.vue(filter)
+
 // ==================================================================================
 
 
