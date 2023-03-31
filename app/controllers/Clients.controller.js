@@ -15,7 +15,7 @@ controllers.AddClient = (req, res)=>{
         trade_name:req.body.tradeName,
         commercial_num:req.body.commercialNum,
         city:req.body.city,
-        address	:address,
+        // address	:address,
         phone:req.body.phone
     }
 
