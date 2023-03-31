@@ -23,13 +23,13 @@ controllers.AddClient = (req, res)=>{
     dataBase.getConnection((error, connection)=>{
         if(error){
             connection.release();
-            return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+            return res.json({success:false, msg:"Erro 1: هناك خطأ ما في إضافة المحل!"});
         }
         // DB Transaction : 2. Start the Transaction
         connection.beginTransaction((error)=>{
             if(error){
                 connection.release();
-                return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+                return res.json({success:false, msg:"Erro 2: هناك خطأ ما في إضافة المحل!"});
             }
             // Step1: Check if the address doesn't exists
             const selectAddress = "SELECT id from clients_addresses WHERE name = ?"
@@ -71,14 +71,14 @@ controllers.AddClient = (req, res)=>{
 
                     return connection.rollback(()=>{
                         connection.release();
-                        return res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+                        return res.json({success:false, msg:"Erro 3: هناك خطأ ما في إضافة المحل!"});
                     })
                 }
                 connection.commit((error)=>{
                     if(error){
                         return connection.rollback(()=>{
                             connection.release();
-                            res.json({success:false, msg:"هناك خطأ ما في إضافة المحل!"});
+                            res.json({success:false, msg:"Erro 4: هناك خطأ ما في إضافة المحل!"});
                         })
                     }
                     connection.release();
