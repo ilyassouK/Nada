@@ -254,11 +254,13 @@ controllers.attendingProducts = (req, res)=>{
       client_id:clientId,
       status:status
     }
+    console.log("🚀 ~ file: Products.controller.js:257 attendingProducts ~ trackData:", trackData)
     const saveTrackQuery = "INSERT INTO product_tracking SET ?"
     dataBase.query(saveTrackQuery, [trackData], (error, data)=>{
       console.log(error)
       if(error) return res.json({success:false, msg:"هناك خطأ ما في تسجيل حضور هذا المنتج!"});
       if(data.affectedRows < 1) return res.json({success:false, msg:"فشلت عملية تسجيل حضور هذا المنتج!"});
+      console.log("🚀 ~ file: Products.controller.js:263 attendingProducts ~ data.affectedRows:", data.affectedRows)
       res.json({success:true, msg:"رائع, لقد تم تسجيل حضورك على المنتج بنجاح."})
     })
   })
