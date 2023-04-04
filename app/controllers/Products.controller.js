@@ -283,13 +283,11 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 product_tracking.status,
                 items.name AS itemName,
                 items.id AS itemId,
-                transactions.receipt_date AS receiptDate,
+                MAX(transactions.receipt_date) AS receiptDate,
                 clients.name AS clientName,
                 users.full_name AS employeeName,
                 clients.trade_name AS tradeName
-
                 FROM product_tracking
-
                 JOIN products ON product_tracking.product_id = products.id
                 JOIN items ON products.item_id = items.id
                 JOIN transactions ON transactions.product_id = product_tracking.product_id
@@ -301,6 +299,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom}' AND '${dateTo}' `:""}
 
+                GROUP BY product_tracking.id
                 ORDER BY product_tracking.created_at DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
