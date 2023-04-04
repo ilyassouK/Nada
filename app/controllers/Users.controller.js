@@ -254,12 +254,13 @@ controllers.addExcelUsers = (req, res)=>{
                 obj['إسم الأب'],
                 obj['إسم الجد'],
                 obj['إسم العائلة'],
+                `${obj['الإسم الأول']} ${obj['إسم الأب']} ${obj['إسم الجد']} ${obj['إسم العائلة']}`, // concatenate full name
                 obj['رقم الهوية'],
                 obj['رقم الجوال'],
                 obj['البريد الإلكتروني']
             ]
         );
-        const insertUsers = "INSERT INTO users (role, username, first_name, parent_name, grand_father, familly_name, civil, phone, email) VALUES ?"
+        const insertUsers = "INSERT INTO users (role, username, first_name, parent_name, grand_father, familly_name, full_name, civil, phone, email) VALUES ?"
         dataBase.query(insertUsers, [VALUES], (error, results)=>{
             // Delete the file uploaded:
             deleteUploadedExcelFile(fileUploaded);
