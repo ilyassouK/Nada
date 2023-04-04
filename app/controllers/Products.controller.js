@@ -9,7 +9,7 @@ controllers.deliveryProducts = (req, res)=>{
     // Step0: Get records LIMIT = (quantity's num) from products table by itemsID (Warehouse's products) 
     // Step1: Create new record in transactions table
     // Step2: Update (update multi) from products table [location=1/2]
-    // Step3: Update qunitiy in items table [quantity]
+    // Step3: Update quantityOut in items table (Inc quantityOut)
 
     let quantity = req.body.quantity;
     let employee = req.body.employee;
@@ -19,8 +19,8 @@ controllers.deliveryProducts = (req, res)=>{
 
     if((!employee && !client) || !quantity) return res.json({success:false, msg:'هناك بعض البيانات مفقودة, الرجاء المحاولة مجدداً.'})
     
-    // Step -1: Check the quantity enough
-    let query = "SELECT id FROM items WHERE id = ? AND quantity >= ? AND active = 1";
+    // Step -1: Check the quantity enough [Reset quantity is (quantity-quantityOut)]
+    let query = "SELECT id FROM items WHERE id = ? AND (quantity-quantityOut) >= ? AND active = 1";
     dataBase.query(query, [item, quantity], (error, data)=>{
         if(error) return res.json({success:false, msg:"هناك خطأ عند التأكد من كفاية الكمية!"});
         if(!data.length) return res.json({success:false, msg:'فشل نقل العهُد, الكمية غير كافية او الصنف غير معتمد.'})
@@ -79,8 +79,8 @@ controllers.deliveryProducts = (req, res)=>{
                       });
                     }
   
-                    // Step3: Update qunitiy in items table [quantity]
-                    let updateItemQuery=`UPDATE items SET quantity = quantity - ? WHERE id = ?`;
+                    // Step3: Update quantityOut in items table (Inc quantityOut)
+                    let updateItemQuery=`UPDATE items SET quantityOut = quantityOut + ? WHERE id = ?`;
                     dataBase.query(updateItemQuery,[quantity, item], (error, data)=>{
                       if(error){
                         return connection.rollback(()=>{
@@ -160,7 +160,7 @@ controllers.returnBackProducts = (req, res, next) => {
   /*
     Step1: Update (update multi) from products table [location=0]
     Step2: Update transaction table Set return_date
-    Step3: Update quantity in items table [quantity]
+    Step3: Update quantityOut in items table (Dec quantityOut)
   */
   const productIds = req.body.productIds; // keep it as Array with parameterized queries
   dataBase.getConnection((error, connection) => {
@@ -206,7 +206,8 @@ controllers.returnBackProducts = (req, res, next) => {
             });
           }
   
-          const updateItemsQuery = `UPDATE items JOIN products ON items.id = products.item_id SET quantity = quantity + ? WHERE products.id IN (?)`;
+          //Step3: Update quantityOut in items table (Dec quantityOut)
+          const updateItemsQuery = `UPDATE items JOIN products ON items.id = products.item_id SET quantityOut = quantityOut - ? WHERE products.id IN (?)`;
           const quantity = productsResult.affectedRows;
           connection.query(updateItemsQuery, [quantity, productIds], (error, itemsResult) => {
             if (error) {
@@ -264,6 +265,7 @@ controllers.attendingProducts = (req, res)=>{
 }
 controllers.fetchAttendedProducts = (req, res, next)=>{
   let queryReq = req.query;
+  let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
   let search = queryReq.search
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
@@ -298,8 +300,10 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom}' AND '${dateTo}' `:""}
 
                 ORDER BY product_tracking.created_at DESC
-                LIMIT ${limit} 
-                OFFSET ${offset}
+                ${!limtLess ? `
+                    LIMIT ${limit} 
+                    ${offset ? `OFFSET ${offset}`:""}
+                `:''}
                 `
                 // ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
   return next()

@@ -22,7 +22,6 @@ controllers.verifyToken = (req, res, next) => {
 controllers.managersToken = (req, res, next) => {
     const token = req.header('Authorization');
     jwt.verify(token, jwtSecret.user, (error, data)=>{
-        console.log("🚀 ~ file: Auth.controller.js:26 ~ jwt.verify ~ data.userType:", data.userType)
         if(error || !data || data.userType == "employee"){
             return res.json({ success: false, msg: "غذراً, فأنت لا تملك الصلاحية لهذا الإجراء." })
         }
@@ -41,7 +40,13 @@ controllers.adminToken = (req, res, next) => {
         return next();
     })
 }
-
+// Only admin can access and download data as Excel
+controllers.excelMiddleware = (req, res, next) => {
+    if(req.query.limtLess && tokenData.userType != "admin") {
+        return res.json({success:false, msg:"You don't have the permission to download"})
+    }
+    return next()
+}
 // Path0: Re-check Auth
 controllers.reCheckAuth = (req, res)=>{
     let id = tokenData.id;

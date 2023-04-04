@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const bcrypt = require("bcrypt-nodejs");
-const controllers = {}
+const xlsx = require('xlsx');
+const controllers = {};
 const dataBase = require('../config/DB');
 const limit = 30;
 
@@ -38,6 +39,7 @@ controllers.AddUser = (req, res)=>{
         job_title:req.body.jobTitle || username,
         civil:req.body.civil,
         phone:req.body.phone,
+        email:req.body.email,
     }
 
     // Step1 : Check username doesn't exists before
@@ -77,24 +79,32 @@ controllers.AddUser = (req, res)=>{
 controllers.fetchUsers = (req, res, next)=>{
     let id = tokenData.id
     let queryReq = req.query;
+    let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
     let search = queryReq.search
     let offset = queryReq.offset 
-    let role = queryReq.role == "employee" ? 3 : queryReq.role == "admin" ? 1 : 2
+    let role = queryReq.role == "employee" ? 3 : queryReq.role == "admin" ? 1 : queryReq.role == "storekeeper" ? 2 : undefined
+    console.log("🚀 ~ file: Users.controller.js:86 ~ queryReq.role:", queryReq.role)
 
     query = `SELECT
                 id,
-                civil,
-                first_name AS firstName,
+                role,
                 username,
+                first_name AS firstName,
+                parent_name AS parentName,
+                grand_father AS grandFather,
+                familly_name AS famillyName,
+                civil,
                 phone,
-                role
+                email
             FROM users
             WHERE id != ${id}
             ${role ? `AND role = ${role}`:''}
             ${search ? `AND (username LIKE '%${search}%' OR civil LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
             ORDER BY created_at DESC
-            LIMIT ${limit} 
-            OFFSET ${offset}
+            ${!limtLess ? `
+                LIMIT ${limit} 
+                ${offset ? `OFFSET ${offset}`:""}
+            `:''}
             `;
     return next();
 }
@@ -209,5 +219,56 @@ controllers.updateOneUser = (req, res)=>{
         return startUpdate();
     }
 
+}
+controllers.addExcelUsers = (req, res)=>{
+    /*
+        Collect username in Array using map()
+            Check in DB that there is no usename exists.
+                Collect unique username
+    */
+   const fileUploaded = req.file.path;
+   if(!fileUploaded) return res.json({success:false, msg:'عفواً لم يتم رفع الملف!'})
+    // Parse the uploaded Excel file
+    const workbook = xlsx.readFile(fileUploaded);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const dataTable = xlsx.utils.sheet_to_json(worksheet);
+
+    if(!dataTable.length || !dataTable[0]['إسم المستخدم']) return res.json({success:false, msg:'الرجاء رفع جدول بيانات المستخدمين بشكل الصحيح.'})
+
+    const dataUsernames = dataTable.map(obj => obj['إسم المستخدم']); // return array of usernames ['Example','Example','Example']
+    if(!dataUsernames.length) return res.json({success:false, msg:'الرجاء رفع جدول بيانات المستخدمين بشكل صحيح.'})
+
+    const checkUsers = "SELECT username FROM users WHERE username IN (?)"
+    dataBase.query(checkUsers, [dataUsernames], (error, results)=>{
+        if(error) return res.json({success:false, msg:"هناك خطأ ما في التحقق من الحسابات!"});
+        
+        const existingUsers = results.map(row => row.username); // return array of usernames ['Example','Example','Example']
+        const uniqueUsers = dataTable.filter(obj => !existingUsers.includes(obj['إسم المستخدم']));
+        if(!uniqueUsers.length) return res.json({success:false, msg:"عفواً و لكن هذه الحسابات مسجلة سابقاً."});
+        
+        const VALUES = uniqueUsers.map(obj => [
+                obj['الرتبه'],
+                obj['إسم المستخدم'],
+                obj['الإسم الأول'],
+                obj['إسم الأب'],
+                obj['إسم الجد'],
+                obj['إسم العائلة'],
+                obj['رقم الهوية'],
+                obj['رقم الجوال'],
+                obj['البريد الإلكتروني']
+            ]
+        );
+        const insertUsers = "INSERT INTO users (role, username, first_name, parent_name, grand_father, familly_name, civil, phone, email) VALUES ?"
+        dataBase.query(insertUsers, [VALUES], (error, results)=>{
+            // Delete the file uploaded:
+            deleteUploadedExcelFile(fileUploaded);
+            console.log("🚀 ~ file: Users.controller.js:238 ~ dataBase.query ~ error:", error)
+            if(error) return res.json({success:false, msg:"حدث خطأ ما في إضافة الحسابات!"});
+            if(!results.affectedRows) return res.json({success:false, msg:"فشلة عملية إضافة الحسابات!"});
+            console.log("🚀 ~ file: Users.controller.js:252 ~ dataBase.query ~ results.affectedRows:", results.affectedRows)
+            res.json({success:true, msg:"رائع, تم استيراد و تسجيل البيانات بنجاح", existingUsers:existingUsers})
+        })        
+      
+    })
 }
 module.exports = controllers;

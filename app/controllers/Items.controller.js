@@ -1,5 +1,4 @@
 const controllers = {}
-const con = require('../config/DB');
 const dataBase = require('../config/DB');
 const limit = 30;
 
@@ -29,7 +28,7 @@ controllers.addItem = (req, res)=>{
       }
       
       // 1- Start Transaction
-      connection.beginTransaction(()=>{
+      connection.beginTransaction((error)=>{
         if(error){
           connection.release();
           return res.json({success:false, msg:"هناك خطأ ما في إضافة صنف جديد!"});
@@ -82,27 +81,31 @@ controllers.addItem = (req, res)=>{
 
 }
 controllers.warehouseItems = (req, res, next)=>{
-    let queryReq = req.query;
-    let search = queryReq.search
-    let offset = queryReq.offset 
+  let queryReq = req.query;
+  let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
+  let search = queryReq.search
+  let offset = queryReq.offset 
 
-    query = `SELECT
-                id,
-                name,
-                quantity,
-                unit,
-                unit_price AS unitPrice,
-                total_price AS totalPrice
-            FROM items
-            ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
-            ORDER BY created_at DESC
-            LIMIT ${limit} 
-            OFFSET ${offset}
-            `;
-    return next();
+  query = `SELECT
+              id,
+              name,
+              quantity,
+              (quantity - quantityOut) AS restQuantity,
+              unit,
+              unit_price AS unitPrice,
+              total_price AS totalPrice
+          FROM items
+          ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
+          ORDER BY created_at DESC
+          ${!limtLess ? `
+              LIMIT ${limit} 
+              ${offset ? `OFFSET ${offset}`:""}
+          `:''}
+          `;
+  return next();
 }
 controllers.selectItems = (req, res, next)=>{
-    query = "SELECT id, name, quantity FROM items WHERE active = 1"
+    query = "SELECT id, name, quantity, quantityOut FROM items WHERE active = 1"
     return next();
 }
 controllers.deleteItems = (req, res)=>{
@@ -131,4 +134,115 @@ controllers.fetchAllUnits = (req, res, next)=>{
   query = "SELECT id, name AS unit FROM units";
   return next();
 }
+controllers.fetchOneItem = (req, res, next)=>{
+  const id = req.params.id; // item id
+  const query = `SELECT id,
+                      name,
+                      quantity,
+                      (quantity - quantityOut) AS restQuantity,
+                      unit,
+                      unit_price AS unitPrice,
+                      total_price AS totalPrice
+                  FROM items
+                  WHERE id = ?
+                  `;
+  dataBase.query(query, [id], (error, data)=>{
+    if(error) return res.json({success:false, msg:"حدث خطأ ما اثناء محاولة جلب بيانات هذا النصف!"});
+    if(!data.length) return res.json({success:false, msg:"عفواً, فشلة محاولة جلب بيانات هذا النصف!"});
+    res.json({success:true, data:data});
+  })
+}
+controllers.updateItem = (req, res)=>{
+  let id = req.params.id; // item id
+  /*
+    Step1: Update Item
+      Step2: If new quantity -> Create records in products table
+  */
+
+  const quantity = Number(req.body.quantity);
+  const newQuantity = Number(req.body.newQuantity) > 0 || 0;
+  const unitPrice = Number(req.body.unitPrice)
+  let payload = {
+    // class:req.body.class,
+    name:req.body.name,
+    quantity:quantity + newQuantity,
+    unit:req.body.unit,
+    unit_price:unitPrice,
+    total_price:req.body.totalPrice,
+  }
+  console.log("🚀 ~ file: Items.controller.js:170 ~ payload:", payload)
+  dataBase.getConnection((error, connection)=>{
+    if(error){
+      connection.release();
+      return res.json({success:false, msg:"هناك خطأ ما في تحديث الصنف Eerror:1!"});
+    }
+    connection.beginTransaction((error)=>{
+      if(error){
+        connection.release();
+        return res.json({success:false, msg:"هناك خطأ ما في تحديث الصنف Eerror:1!"});
+      }
+      // Step1: Update Item
+      const updateItemQuery = "UPDATE items SET ? WHERE id = ?";
+      connection.query(updateItemQuery, [payload, id], (error, data)=>{
+        
+        if(error){
+          console.log("🚀 ~ file: Items.controller.js:183 ~ connection.query ~ error:", error)
+          return connection.rollback(()=>{
+            connection.release();
+            res.json({success:false, msg:"حدث خطأ اثناء عميلة تحديث هذا الصنف!"});
+          });
+        }
+        if(!data.affectedRows){
+          console.log("🚀 ~ file: Items.controller.js:190 ~ connection.query ~ data.affectedRows:", data.affectedRows)
+          return connection.rollback(()=>{
+            connection.release();
+            res.json({success:false, msg:"عفواً فشلة عميلة تحديث هذا الصنف!"});
+          });
+        }
+        //Step2: If new quantity -> Create records in products table
+        if(newQuantity > 0){
+          let products = [];
+          for(let i=0; i < newQuantity; i++) products.push({item_id:id})
+          //Convert the array of objects to array of arrays
+          let sqlValues = products.map(object => Object.values(object))
+          let createProductsQuery = "INSERT INTO products (item_id) VALUES ?";
+          connection.query(createProductsQuery, [sqlValues], (error, data)=>{
+              if(error){
+                return connection.rollback(()=>{
+                  connection.release();
+                  res.json({success:false, msg:"هناك خطأ ما في إضافة المنتجات!"})
+                })
+              }
+              
+              connection.commit((error)=>{
+                if(error){
+                  return connection.rollback(()=>{
+                    connection.release();
+                    res.json({success:false, msg:"هناك خطأ ما في إضافة المنتجات!"})
+                  })
+                } 
+                connection.release();
+                // Success, Fin
+                return res.json({success:true, msg:"رائع, تم تحديث الصنف و إضافة المنتجات الجديدة في المستودع بنجاح."})
+              })
+            })
+          }else{
+            connection.commit((error)=>{
+              if(error){
+                return connection.rollback(()=>{
+                  connection.release();
+                  res.json({success:false, msg:"هناك خطأ ما في تحديث بيانات هذا الصنف!"})
+                })
+              } 
+              connection.release();
+              // Success, Fin
+              return res.json({success:true, msg:"رائع, تم تحديث بيانات الصنف بنجاح."})
+            })
+        }
+      })
+    })
+  })
+
+}
+
 module.exports = controllers;

@@ -1,96 +1,32 @@
 const controllers = {}
 const dataBase = require('../config/DB');
+const xlsx = require('xlsx');
+const {deleteUploadedExcelFile} = require("./Helper.controller");
 const limit = 30;
 
 
 controllers.AddClient = (req, res)=>{
-    // Step1: Check if the address doesn't exists
-    // step2: Insert Address
-    // step3: Insert client with insertedId (of address table)
-    // Step4: Insert client with existed id (of address table)
-    
-    const address = req.body.address;
     let payload = {
         name:req.body.name,
         trade_name:req.body.tradeName,
         commercial_num:req.body.commercialNum,
         city:req.body.city,
-        // address	:address,
         phone:req.body.phone
     }
-
-    // DB Transaction : 1. Get connection from Pool
-    dataBase.getConnection((error, connection)=>{
-        if(error){
-            connection.release();
-            return res.json({success:false, msg:"Erro 1: هناك خطأ ما في إضافة المحل!"});
+    let query = "INSERT INTO clients SET ?"
+    dataBase.query(query, [payload], (error, data)=>{
+        if(error || !data.affectedRows){
+            console.log("🚀 ~ file: Clients.controller.js:20 ~ dataBase.query ~ error:", error)
+            return res.json({success:false, msg:"Erro 3: هناك خطأ ما في إضافة المحل!"});
         }
-        // DB Transaction : 2. Start the Transaction
-        connection.beginTransaction((error)=>{
-            if(error){
-                connection.release();
-                return res.json({success:false, msg:"Erro 2: هناك خطأ ما في إضافة المحل!"});
-            }
-            // Step1: Check if the address doesn't exists
-            const selectAddress = "SELECT id from clients_addresses WHERE name = ?"
-            connection.query(selectAddress, [address], (error, data)=>{
-                if(error){
-                    return connection.rollback(()=>{
-                        connection.release();
-                        res.json({success:false, msg:"حدث خطأ اثناء التحقق في العنوان!"});
-                    })
-                }
-                if(!data.length){
-                    //step2: Insert Address
-                    const insertAddressQuery = "INSERT INTO clients_addresses SET name = ?";
-                    connection.query(insertAddressQuery, [address], (error, data)=>{
-                        if(error || !data.affectedRows){
-                            return connection.rollback(()=>{
-                                connection.release();
-                                res.json({success:false, msg:"حدث خطأ اثناء إضافة العنوان العنوان!"});
-                            })
-                        }
-                        // step3: Insert client with insertedId (of address table)
-                        return insertClinet(data.insertId);
-        
-                    })
-                }else{
-                    // Step4: Insert client with existed id (of address table)
-                    return insertClinet(data[0].id);
-                }
+        return res.json({success:true, msg:`رائع, تم إضافة المحل بنجاح.`})
+    })    
 
-            });
-        });
-        //////////////////////////////////////////////////
-        const insertClinet = (id) =>{
-            payload.address_id = id;
-            let query = "INSERT INTO clients SET ?"
-            connection.query(query, [payload], (error, data)=>{
-                if(error || !data.affectedRows){
-                    console.log("🚀 ~ file: Clients.controller.js:26 ~ dataBase.getConnection ~ error:", error)
 
-                    return connection.rollback(()=>{
-                        connection.release();
-                        return res.json({success:false, msg:"Erro 3: هناك خطأ ما في إضافة المحل!"});
-                    })
-                }
-                connection.commit((error)=>{
-                    if(error){
-                        return connection.rollback(()=>{
-                            connection.release();
-                            res.json({success:false, msg:"Erro 4: هناك خطأ ما في إضافة المحل!"});
-                        })
-                    }
-                    connection.release();
-                    return res.json({success:true, msg:`رائع, تم إضافة المحل بنجاح.`})
-                })
-            })    
-        }
-        //////////////////////////////////////////////////
-        });
 }
 controllers.fetchClients = (req, res, next)=>{
     let queryReq = req.query;
+    let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
     let search = queryReq.search
     let offset = queryReq.offset 
 
@@ -102,15 +38,17 @@ controllers.fetchClients = (req, res, next)=>{
                 city,
                 phone
             FROM clients
-            ${search ? `WHERE (trade_name LIKE '%${search}%' OR name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
+            ${search ? `WHERE (trade_name LIKE '%${search}%' OR name LIKE '%${search}%' OR commercial_num LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
             ORDER BY created_at DESC
-            LIMIT ${limit} 
-            OFFSET ${offset}
+            ${!limtLess ? `
+                LIMIT ${limit} 
+                ${offset ? `OFFSET ${offset}`:""}
+            `:''}
             `;
     return next();
 }
 controllers.selectClients = (req, res, next)=>{
-    query = "SELECT id, trade_name AS tradeName, address_id AS addressId  FROM clients WHERE active = 1"
+    query = "SELECT id, city, trade_name AS tradeName FROM clients WHERE active = 1"
     return next();
 }
 controllers.deleteClients = (req, res)=>{
@@ -125,16 +63,13 @@ controllers.deleteClients = (req, res)=>{
 controllers.fetchOneClient = (req, res)=>{
     let id = req.params.id;
     query = `SELECT
-                clients.id,
-                clients.name,
-                clients.trade_name AS tradeName,
-                clients.commercial_num AS commercialNum,
-                clients.city,
-                clients.phone,
-                clients.address_id AS addressId,
-                clients_addresses.name AS address
+                    id,
+                    name,
+                    trade_name AS tradeName,
+                    commercial_num AS commercialNum,
+                    city,
+                    phone
             FROM clients
-            JOIN clients_addresses ON clients.address_id = clients_addresses.id
             WHERE clients.id = ?
             `
     dataBase.query(query, [id], (error, data)=>{
@@ -156,7 +91,6 @@ controllers.updateOneClient = (req, res)=>{
         trade_name:req.body.tradeName,
         commercial_num:req.body.commercialNum,
         city:req.body.city,
-        address_id	:req.body.addressId,
         phone:req.body.phone
     }
     const query = `UPDATE clients SET ? WHERE id = ? 
@@ -171,7 +105,52 @@ controllers.updateOneClient = (req, res)=>{
     })
 }
 controllers.selectaddresses = (req, res, next)=>{
-    query = "SELECT id, name AS address FROM clients_addresses";
+    query = "SELECT DISTINCT city FROM clients";
     return next();
+}
+
+controllers.addExcelClients = (req, res)=>{
+    /*
+        Collect username in Array using map()
+            Check in DB that there is no usename exists.
+                Collect unique username
+    */
+    const fileUploaded = req.file.path;
+    if(!fileUploaded) return res.json({success:false, msg:'عفواً لم يتم رفع الملف!'})
+    // Parse the uploaded Excel file
+    const workbook = xlsx.readFile(fileUploaded);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const dataTable = xlsx.utils.sheet_to_json(worksheet);
+
+    if(!dataTable.length || !dataTable[0]['رقم السجل']) return res.json({success:false, msg:'الرجاء رفع جدول بيانات المحلات بشكل الصحيح.'})
+
+    const dataComNum = dataTable.map(obj => obj['رقم السجل']); // return array of الإسم التجاري ['Example','Example','Example']
+    
+    const checkClients = "SELECT commercial_num AS commercialNum FROM clients WHERE commercial_num IN (?)"
+    dataBase.query(checkClients, [dataComNum], (error, results)=>{
+
+        if(error) return res.json({success:false, msg:"هناك خطأ ما في التحقق من الحسابات!"});
+        const existingClients = results.map(row => row.commercialNum); // return array of commercialNum ['Example','Example','Example']
+        const uniqueClients = dataTable.filter(obj => !existingClients.includes(String(obj['رقم السجل'])));
+        if(!uniqueClients.length) return res.json({success:false, msg:"عفواً و لكن هذه الحسابات مسجلة سابقاً."});
+        
+        const VALUES = uniqueClients.map(obj => [
+                obj['الإسم التجاري'],
+                obj['رقم السجل'],
+                obj['الإسم الكامل'],
+                obj['رقم الهاتف'],
+                obj['المدينة / المحافظة']
+            ]
+        );
+        const insertClients = "INSERT INTO clients (trade_name, commercial_num, name, phone, city) VALUES ?"
+        dataBase.query(insertClients, [VALUES], (error, results)=>{
+            // Delete the file uploaded:
+            deleteUploadedExcelFile(fileUploaded);
+            console.log("🚀 ~ file: Clients.controller.js:115 ~ dataBase.query ~ error:", error)
+            if(error) return res.json({success:false, msg:"حدث خطأ ما في إضافة الحسابات!"});
+            if(!results.affectedRows) return res.json({success:false, msg:"فشلة عملية إضافة الحسابات!"});
+            res.json({success:true, msg:"رائع, تم استيراد و تسجيل البيانات بنجاح", existingClients:existingClients})
+        });
+    })
 }
 module.exports = controllers;

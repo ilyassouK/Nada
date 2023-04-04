@@ -1,12 +1,17 @@
 const controllers = {}
 const dataBase = require('../config/DB');
+const fs = require('fs');
 
-
+controllers.deleteUploadedExcelFile = (fileUploaded)=>{
+    fs.unlink(fileUploaded, (err)=>{
+        if(err) console.log("Failed delete the uploaded file ", err);
+        console.log("Well, the uploaded file has been successfully removed")
+    })
+}
 
 controllers.nextDbProccess = (req, res)=>{
     if(!msg){var msg='لم يتم إيجاد اي معلومات لعرضها.'}
     dataBase.query(query, (error, data)=>{
-        console.log("🚀 ~ file: Helper.controller.js:9 ~ dataBase.query ~ error:", error)
 
         if(error) return res.json({success:false, msg:"حدث خطأ ما, الرجاء التحقق من الإتصال, و إعادة المحاولة."});
         if(!data.length) return res.json({success:false, msg:msg});
