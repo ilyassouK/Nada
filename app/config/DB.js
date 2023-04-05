@@ -5,7 +5,7 @@ let con = mysql.createPool({
     connectionLimit : 10,
     host: 'localhost',
     user: 'root',
-    password: 'nadaDB@2030',
+    password: '',
     database: 'nada_db'
 })
 module.exports = con;

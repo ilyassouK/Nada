@@ -118,10 +118,13 @@ controllers.fetchTransactions = (req, res, next)=>{
     let id = req.params.id
     // Cant' an employee see other employee's transaction!
     if(tokenData.userType === "employee" && id != tokenData.id) return res.json({success:false, msg:"Soory, but you don't have the permission!"})
+    
     let queryReq = req.query;
     let group = queryReq.group; // For client (clients table) || employee (users table)
 
-    let previous = JSON.parse(queryReq.previous);
+    let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
+
+    let previous = queryReq.previous ? JSON.parse(queryReq.previous) : false;
     let search = queryReq.search
     let offset = queryReq.offset 
     query = `SELECT
@@ -148,13 +151,42 @@ controllers.fetchTransactions = (req, res, next)=>{
                 ${previous ? 'AND return_date IS NOT NULL':'AND return_date IS NULL'}
                 ORDER BY transactions.created_at DESC
                 LIMIT ${limit} 
-                OFFSET ${offset}
+                ${offset ? `OFFSET ${offset}`:""}
             `
     return next();
     // WHERE ${group == 1 ? 'transactions.employee_id':'transactions.client_id'} = ${id}
 
     // ${search ? `AND (itname LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
 
+}
+controllers.allTransactionsReport = (req, res, next)=>{
+    let id = req.params.id    
+    let queryReq = req.query;
+    let group = queryReq.group; // For client (clients table) || employee (users table)
+
+    query = `SELECT
+                transactions.id,
+                transactions.product_id AS productId,
+                transactions.employee_id AS employeeId,
+                transactions.client_id AS clientId,
+                transactions.receipt_date AS receiptDate,
+                transactions.return_date AS returnDate,
+                transactions.status, 
+                ${group == 1 ? `users.full_name AS employeeName,`:`clients.trade_name AS tradeName,`}
+                items.name AS itemName
+            FROM transactions 
+                JOIN products ON products.id = transactions.product_id
+                JOIN items ON items.id = products.item_id
+                ${group == 1 ? 
+                  `JOIN users ON users.id = transactions.employee_id
+                  WHERE transactions.employee_id = ${id}`
+                  :
+                  `JOIN clients ON clients.id = transactions.client_id
+                  WHERE transactions.client_id = ${id}`
+                }
+                ORDER BY transactions.created_at DESC
+            `
+    return next();
 }
 controllers.returnBackProducts = (req, res, next) => {
   /*

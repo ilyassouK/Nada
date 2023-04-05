@@ -5,7 +5,7 @@ const {check} = require('express-validator');
 const {verifyToken, managersToken, adminToken, excelMiddleware} = require('../controllers/Auth.controller');
 const {nextDbProccess} = require('../controllers/Helper.controller');
 const {addItem, warehouseItems, selectItems, deleteItems, addNewUnit, fetchAllUnits, fetchOneItem, updateItem} = require('../controllers/Items.controller');
-const {deliveryProducts, fetchTransactions, returnBackProducts, attendingProducts, fetchAttendedProducts, deleteTracked, covenant, agreement} = require('../controllers/Products.controller');
+const {deliveryProducts, fetchTransactions, returnBackProducts, attendingProducts, fetchAttendedProducts, deleteTracked, covenant, agreement, allTransactionsReport} = require('../controllers/Products.controller');
 const {fetchUsers, AddUser, deleteUsers, fetchOneUser, updateOneUser, addExcelUsers} = require('../controllers/Users.controller');
 const {selectEmployees} = require('../controllers/Employees.controller');
 const {AddClient, fetchClients, selectClients, deleteClients, fetchOneClient, updateOneClient, selectaddresses, addExcelClients} = require('../controllers/Clients.controller');
@@ -38,6 +38,7 @@ router.get('/v1/products/path4', verifyToken, excelMiddleware, fetchAttendedProd
 router.post('/v1/products/path5', verifyToken, deleteTracked);
 router.get('/v1/products/path6/:id', verifyToken, covenant); //بيانات العهد
 router.get('/v1/products/path7/:id', verifyToken, agreement); //بيانات العقد / الإتفاقية
+router.get('/v1/products/path8/:id', managersToken, allTransactionsReport, nextDbProccess); // تصدير الإنتقالات العُهد
 // ==================================================================================
 
 // ==== USERS =======================================================================
