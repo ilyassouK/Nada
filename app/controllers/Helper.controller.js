@@ -12,6 +12,7 @@ controllers.deleteUploadedExcelFile = (fileUploaded)=>{
 controllers.nextDbProccess = (req, res)=>{
     if(!msg){var msg='لم يتم إيجاد اي معلومات لعرضها.'}
     dataBase.query(query, (error, data)=>{
+        console.log("🚀 ~ file: Helper.controller.js:15 ~ dataBase.query ~ error:", error)
 
         if(error) return res.json({success:false, msg:"حدث خطأ ما, الرجاء التحقق من الإتصال, و إعادة المحاولة."});
         if(!data.length) return res.json({success:false, msg:msg});

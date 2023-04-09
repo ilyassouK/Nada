@@ -122,8 +122,6 @@ controllers.fetchTransactions = (req, res, next)=>{
     let queryReq = req.query;
     let group = queryReq.group; // For client (clients table) || employee (users table)
 
-    let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
-
     let previous = queryReq.previous ? JSON.parse(queryReq.previous) : false;
     let search = queryReq.search
     let offset = queryReq.offset 
@@ -136,6 +134,7 @@ controllers.fetchTransactions = (req, res, next)=>{
                 transactions.return_date AS returnDate,
                 transactions.status, 
                 ${group == 1 ? `users.full_name AS employeeName,`:`clients.trade_name AS tradeName,`}
+                items.id AS itemId,
                 items.name AS itemName
             FROM transactions 
                 JOIN products ON products.id = transactions.product_id
@@ -159,6 +158,7 @@ controllers.fetchTransactions = (req, res, next)=>{
     // ${search ? `AND (itname LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
 
 }
+// Excel
 controllers.allTransactionsReport = (req, res, next)=>{
     let id = req.params.id    
     let queryReq = req.query;
@@ -192,9 +192,11 @@ controllers.returnBackProducts = (req, res, next) => {
   /*
     Step1: Update (update multi) from products table [location=0]
     Step2: Update transaction table Set return_date
-    Step3: Update quantityOut in items table (Dec quantityOut)
+    Step3: Update quantityOut in items table [One / Many items depend the products]  (Dec quantityOut)
   */
-  const productIds = req.body.productIds; // keep it as Array with parameterized queries
+  const bodyData = req.body;
+  //const productIds = req.body.productIds; // Keep it as Array with parameterized queries [ 91, 92, 93, 94, 95 ]
+  const productIds = bodyData.map(obj => obj.productId); // Keep it as Array with parameterized queries [ 91, 92, 93, 94, 95 ]
   dataBase.getConnection((error, connection) => {
     if (error) {
       connection.release();
@@ -239,8 +241,27 @@ controllers.returnBackProducts = (req, res, next) => {
           }
   
           //Step3: Update quantityOut in items table (Dec quantityOut)
-          const updateItemsQuery = `UPDATE items JOIN products ON items.id = products.item_id SET quantityOut = quantityOut - ? WHERE products.id IN (?)`;
+          const itemsData = []
+          bodyData.forEach((obj)=>{
+            const existedItem = itemsData.find(e => e.itemId == obj.itemId);
+              if(!existedItem){
+                  obj.quantityOut = 1;
+                  itemsData.push(obj);
+              }else{
+                  existedItem.quantityOut = existedItem.quantityOut + 1;
+              }
+          });
+          const VALUES = itemsData.map(({itemId, quantityOut}) => `SELECT ${itemId} AS id, ${quantityOut} AS quantityOut`).join(' UNION ALL\n');
+          const updateItemsQuery = `UPDATE items
+                                            JOIN (
+                                              ${VALUES}
+                                            ) AS softTable
+                                        ON items.id = softTable.id
+                                        SET items.quantityOut = items.quantityOut - softTable.quantityOut;
+          `
+          // const updateItemsQuery = `UPDATE items JOIN products ON items.id = products.item_id SET quantityOut = quantityOut - ? WHERE products.id IN (?)`;
           const quantity = productsResult.affectedRows;
+          console.log("🚀 ~ file: Products.controller.js:243 ~ connection.query ~ productsResult.affectedRows:", productsResult.affectedRows)
           connection.query(updateItemsQuery, [quantity, productIds], (error, itemsResult) => {
             if (error) {
               return connection.rollback(() => {
@@ -304,6 +325,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
+  console.log("🚀 ~ file: Products.controller.js:302 ~ queryReq:", queryReq)
   
 
   query = `SELECT
@@ -326,7 +348,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 JOIN users ON users.id = product_tracking.employee_id
                 JOIN clients ON clients.id = product_tracking.client_id
                 WHERE 1=1
-                ${search ? `AND (users.full_name LIKE '%${search}%' OR clients.address_id LIKE '%${search}%' )`:''}
+                ${search ? `AND (clients.city LIKE '%${search}%' OR users.full_name LIKE '%${search}%' OR users.username LIKE '%${search}%' OR users.civil LIKE '%${search}%' )`:''}
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom}' AND '${dateTo}' `:""}
@@ -409,5 +431,47 @@ controllers.agreement = (req, res)=>{
 
     res.json({success:true, rows:data})
   })
+}
+controllers.getUsersAndClientsOfItems = (req, res, next)=>{
+  const search = req.query.search;
+  const commonCondition = `
+    JOIN products ON products.id = transactions.product_id
+    JOIN items ON items.id = products.item_id
+    WHERE items.name LIKE '%${search}%' AND transactions.return_date IS NULL
+  `
+  query = `
+  SELECT items.name AS itemName,
+          COUNT(transactions.id) AS COUNT,
+          users.id AS employeeId,
+          users.full_name AS employeeName,
+          users.civil AS employeeCivil,
+          users.phone AS employeePhone,
+
+          NULL AS clientId,
+          NULL AS tradeName,
+          NULL AS commercialNum,
+          NULL AS clientCity,
+          NULL AS clientPhone
+      FROM transactions
+      JOIN users ON users.id = transactions.employee_id
+      ${commonCondition}
+  UNION
+  SELECT items.name AS itemName,
+          COUNT(transactions.id) AS COUNT,
+          NULL AS userId,
+          NULL AS employeeName,
+          NULL AS employeeCivil,
+          NULL AS employeePhone,
+
+          clients.id AS clientId,
+          clients.trade_name AS tradeName,
+          clients.commercial_num AS commercialNum,
+          clients.city AS clientCity,
+          clients.phone AS clientPhone
+      FROM transactions
+      JOIN clients ON clients.id = transactions.client_id
+      ${commonCondition}
+  `;
+  return next();
 }
 module.exports = controllers;

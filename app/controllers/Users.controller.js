@@ -111,10 +111,19 @@ controllers.fetchUsers = (req, res, next)=>{
 }
 controllers.deleteUsers = (req, res)=>{
     let ids = req.body.ids;
-    let query = "DELETE FROM users WHERE id IN (?)"
+    let query = `DELETE FROM users 
+                    WHERE id IN (?) 
+                    AND id NOT IN
+                        (
+                            SELECT DISTINCT employee_id 
+                            FROM transactions 
+                            WHERE employee_id IS NOT NULL 
+                            AND return_date IS NULL
+                        )
+        `
     dataBase.query(query, [ids], (error, data)=>{
       if(error) return res.json({success:false, msg:'عذراً حدث خطأ في الحذف من جدول المستخدمين!'});
-      if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية الحذف من سجل المستخدمين!'})
+      if(!data.affectedRows) return res.json({success:false, msg:'يتطلب اولاً إسترجاع العُهد المسجلة على الموظف.'})
       res.json({success:true, msg:'تم الحذف بنجاح.'})
     })
 }

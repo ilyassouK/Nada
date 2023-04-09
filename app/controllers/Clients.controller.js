@@ -53,10 +53,20 @@ controllers.selectClients = (req, res, next)=>{
 }
 controllers.deleteClients = (req, res)=>{
     let ids = req.body.ids;
-    let query = "DELETE FROM clients WHERE id IN (?)"
+    let query = `DELETE FROM clients 
+    WHERE id IN (?) 
+    AND id NOT IN
+        (
+            SELECT DISTINCT client_id 
+            FROM transactions 
+            WHERE client_id IS NOT NULL 
+            AND return_date IS NULL
+        )
+`
+
     dataBase.query(query, [ids], (error, data)=>{
       if(error) return res.json({success:false, msg:'عذراً حدث خطأ في الحذف من جدول العملاء!'});
-      if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية الحذف من سجل العملاء!'})
+      if(!data.affectedRows) return res.json({success:false, msg:'يتطلب اولاً إسترجاع العُهد المسجلة على المحل.'})
       res.json({success:true, msg:'تم الحذف بنجاح.'})
     })
 }
