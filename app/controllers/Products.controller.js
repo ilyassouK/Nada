@@ -325,7 +325,6 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
-  console.log("🚀 ~ file: Products.controller.js:302 ~ queryReq:", queryReq)
   
 
   query = `SELECT
@@ -351,7 +350,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 ${search ? `AND (clients.city LIKE '%${search}%' OR users.full_name LIKE '%${search}%' OR users.username LIKE '%${search}%' OR users.civil LIKE '%${search}%' )`:''}
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
-                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom}' AND '${dateTo}' `:""}
+                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
 
                 GROUP BY product_tracking.id
                 ORDER BY product_tracking.created_at DESC
@@ -374,8 +373,8 @@ controllers.deleteTracked = (req, res)=>{
   })
 }
 controllers.covenant = (req, res)=>{
-  if(tokenData.userType === 'employee' && id != tokenData.id) return res.json({success:false, msg:"Soory, you need the permission first."})
   let id = req.params.id; // Employee id
+  if(tokenData.userType === 'employee' && id != tokenData.id) return res.json({success:false, msg:"Soory, you need the permission first."})
   query = `
     SELECT items.id AS itemId,
             users.full_name AS employeeName,
@@ -455,6 +454,7 @@ controllers.getUsersAndClientsOfItems = (req, res, next)=>{
       FROM transactions
       JOIN users ON users.id = transactions.employee_id
       ${commonCondition}
+      GROUP BY items.name, users.id, users.full_name, users.civil, users.phone
   UNION
   SELECT items.name AS itemName,
           COUNT(transactions.id) AS COUNT,
@@ -471,6 +471,8 @@ controllers.getUsersAndClientsOfItems = (req, res, next)=>{
       FROM transactions
       JOIN clients ON clients.id = transactions.client_id
       ${commonCondition}
+      GROUP BY items.name, clients.id, clients.trade_name, clients.commercial_num, clients.city, clients.phone;
+
   `;
   return next();
 }
