@@ -4,7 +4,7 @@ const xlsx = require('xlsx');
 const {deleteUploadedExcelFile} = require("./Helper.controller");
 const controllers = {};
 const dataBase = require('../config/DB');
-const limit = 30;
+const limit = 10;
 
 
 controllers.AddUser = (req, res)=>{

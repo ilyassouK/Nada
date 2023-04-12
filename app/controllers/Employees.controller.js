@@ -1,6 +1,6 @@
 const controllers = {}
-const dataBase = require('../config/DB');
-const limit = 30;
+// const dataBase = require('../config/DB');
+// const limit = 10;
 
 
 

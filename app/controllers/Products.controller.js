@@ -1,7 +1,7 @@
 const controllers = {}
 const con = require('../config/DB');
 const dataBase = require('../config/DB');
-const limit = 30;
+const limit = 10;
 
 
 controllers.deliveryProducts = (req, res)=>{
@@ -475,5 +475,33 @@ controllers.getUsersAndClientsOfItems = (req, res, next)=>{
 
   `;
   return next();
+}
+controllers.addProductStatus = (req, res)=>{
+  const status = req.body.status || null;
+  if(!status) res.json({success:false, msg:'الرجاء تعبئة حقل الحالة.'});
+  const query = "INSERT INTO product_status SET status = ?";
+  dataBase.query(query, [status], (error, data)=>{
+    if(error) return res.json({success:false, msg:"حدث خطأ ما في تسجيل الحالة!"})
+    if(!data.affectedRows) return res.json({success:false, msg:"حدث خطأ ما في تسجيل الحالة!"});
+    const insertedData = {
+      id:data.insertId,
+      status: status
+    }
+    return res.json({success:true, msg:"جيد تم إضافة الحالة الى القائمة بنجاح", insertedData:insertedData});
+  })
+}
+controllers.fetchProductsStatus = (req, res, next) => {
+  query = "SELECT id, status FROM product_status";
+  return next();
+}
+controllers.deleteStatus = (req, res)=>{
+  const ids = req.body.ids;
+  let query = "DELETE FROM product_status WHERE id IN (?)"
+  dataBase.query(query, [ids], (error, data)=>{
+    if(error) return res.json({success:false, msg:'عذراً حدث خطأ في الحذف من سجل الحالات!'});
+    if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية الحذف من سجل الحالات!'})
+    res.json({success:true, msg:'تم الحذف بنجاح.'})
+  })
+
 }
 module.exports = controllers;
