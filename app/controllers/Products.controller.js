@@ -361,8 +361,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                                           
                                     `
                                   }
-                                  OR users.username LIKE '%${searchEmployee}%' 
-                                  OR users.civil LIKE '%${searchEmployee}%' )`:''}
+                                )`:''}
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
