@@ -321,7 +321,11 @@ controllers.attendingProducts = (req, res)=>{
 controllers.fetchAttendedProducts = (req, res, next)=>{
   let queryReq = req.query;
   let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
-  let search = queryReq.search
+  // let search = queryReq.search;
+  let searchClinet = queryReq.searchClinet;
+  let searchEmployee = queryReq.searchEmployee;
+  let search = queryReq.searchClinet || queryReq.searchEmployee;
+  
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
@@ -347,7 +351,18 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 JOIN users ON users.id = product_tracking.employee_id
                 JOIN clients ON clients.id = product_tracking.client_id
                 WHERE 1=1
-                ${search ? `AND (clients.city LIKE '%${search}%' OR users.full_name LIKE '%${search}%' OR users.username LIKE '%${search}%' OR users.civil LIKE '%${search}%' )`:''}
+                ${search ? `AND (
+                                  ${searchClinet && searchEmployee ? `
+                                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%'
+                                    `:`
+                                        ${searchClinet ? 
+                                          `clients.city LIKE '%${searchClinet}%'`:`users.full_name LIKE '%${searchEmployee}%'`
+                                        }
+                                          
+                                    `
+                                  }
+                                  OR users.username LIKE '%${searchEmployee}%' 
+                                  OR users.civil LIKE '%${searchEmployee}%' )`:''}
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
@@ -359,6 +374,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                     ${offset ? `OFFSET ${offset}`:""}
                 `:''}
                 `
+                console.log("🚀 ~ file: Products.controller.js:355 ~ query:", query)
                 // ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
   return next()
 }
