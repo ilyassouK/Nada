@@ -90,6 +90,7 @@ controllers.warehouseItems = (req, res, next)=>{
               id,
               name,
               quantity,
+              quantityOut,
               (quantity - quantityOut) AS restQuantity,
               unit,
               unit_price AS unitPrice,
@@ -244,5 +245,31 @@ controllers.updateItem = (req, res)=>{
   })
 
 }
-
+controllers.itemProducts = (req, res) => {
+  /*
+    Used to print QR codes of all products of certain Item [Only the products Out warehouse]
+     * Number of records should = number of item's products Out (records = items.QuantityOut)
+  */
+  const id = req.params.id;
+  const query = `SELECT
+                  transactions.id,
+                  transactions.product_id AS productId,
+                  transactions.receipt_date AS receiptDate,
+                  COALESCE(users.full_name, clients.trade_name) AS recipient,
+                  items.name AS itemName
+            FROM transactions
+            JOIN products ON products.id = transactions.product_id
+            JOIN items ON items.id = products.item_id
+            LEFT JOIN users ON users.id = transactions.employee_id
+            LEFT JOIN clients ON clients.id = transactions.client_id
+            WHERE items.id = ?
+            AND transactions.return_date IS NULL
+            ORDER BY transactions.created_at DESC
+  `
+  dataBase.query(query, [id], (error, data)=>{
+    if(error) return res.json({success:false, msg:"حدث خطأ ما اثناء محاولة جلب ارقام المنتجات!"});
+    if(!data.length) return res.json({success:false, msg:"عفواً, لم يتم ايجاد اي رموز شريطية لمنتجات هذا الصنف!"});
+    return res.json({success:true, rows: data});
+  })
+}
 module.exports = controllers;

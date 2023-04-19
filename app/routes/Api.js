@@ -4,7 +4,7 @@ const multer = require('multer')
 const {check} = require('express-validator');
 const {verifyToken, managersToken, adminToken, excelMiddleware} = require('../controllers/Auth.controller');
 const {nextDbProccess} = require('../controllers/Helper.controller');
-const {addItem, warehouseItems, selectItems, deleteItems, addNewUnit, fetchAllUnits, fetchOneItem, updateItem} = require('../controllers/Items.controller');
+const {addItem, warehouseItems, selectItems, deleteItems, addNewUnit, fetchAllUnits, fetchOneItem, updateItem, itemProducts} = require('../controllers/Items.controller');
 const {deliveryProducts, fetchTransactions, returnBackProducts, attendingProducts, fetchAttendedProducts, deleteTracked, covenant, agreement, allTransactionsReport, getUsersAndClientsOfItems, addProductStatus, fetchProductsStatus, deleteStatus} = require('../controllers/Products.controller');
 const {fetchUsers, AddUser, deleteUsers, fetchOneUser, updateOneUser, addExcelUsers} = require('../controllers/Users.controller');
 const {selectEmployees} = require('../controllers/Employees.controller');
@@ -16,7 +16,7 @@ const upload = multer({ dest: 'uploads/' });
 
 // ==== Items =======================================================================
 router.post('/v1/items/path0', managersToken, addItem); //إضافة صنف
-router.get('/v1/items/path1', managersToken, excelMiddleware,warehouseItems, nextDbProccess); //أصناف المستودع
+router.get('/v1/items/path1', managersToken, excelMiddleware, warehouseItems, nextDbProccess); //أصناف المستودع
 // Get Active Items (id, name) [من اجل تحديد الصنف عند نقل و الإسترجاع]
 router.get('/v1/items/path2', managersToken, selectItems, nextDbProccess)
 router.post('/v1/items/path3', adminToken, deleteItems); //حذف 
@@ -26,6 +26,7 @@ router.post('/v1/items/path4', [
 router.get('/v1/items/path5', managersToken, fetchAllUnits, nextDbProccess); // جلب الوحدات
 router.get('/v1/items/path6/:id', managersToken, fetchOneItem); // Fetch one Item
 router.post('/v1/items/path7/:id', managersToken, updateItem); //تحديث
+router.get('/v1/items/path8/:id', managersToken, itemProducts); // Get item's product for download all products' barcode
 // ==================================================================================
 
 // ===== Products ===================================================================
