@@ -191,6 +191,7 @@ controllers.updateOneUser = (req, res)=>{
     // Only admin can update anyone.
     if(tokenData.userType != 'admin' && id != tokenData.id) return res.json({success:false, msg:"Soory, you don't have the permission!"});
 
+    const role = req.body.role;
     const username = req.body.username;
     const password = req.body.password;
     const firstName = req.body.firstName;
@@ -200,7 +201,7 @@ controllers.updateOneUser = (req, res)=>{
     const fullName = firstName + " " + parentName + " " + grandFather + " " + famillyName;
 
     const payload = {
-        // role:req.body.role,
+        role:req.body.role,
         username:username,
         full_name:fullName,
         first_name:firstName,

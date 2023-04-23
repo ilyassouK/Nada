@@ -324,13 +324,14 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   // let search = queryReq.search;
   let searchClinet = queryReq.searchClinet;
   let searchEmployee = queryReq.searchEmployee;
-  let search = queryReq.searchClinet || queryReq.searchEmployee;
+  let searchItem = queryReq.searchItem;
+  let search = queryReq.searchClinet || queryReq.searchEmployee || queryReq.searchItem;
   
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
   
-
+  /*
   query = `SELECT
                 product_tracking.id,
                 product_tracking.employee_id AS employeeId,
@@ -352,11 +353,12 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 JOIN clients ON clients.id = product_tracking.client_id
                 WHERE 1=1
                 ${search ? `AND (
-                                  ${searchClinet && searchEmployee ? `
-                                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%'
+                                  ${searchClinet && searchEmployee && searchItem ? `
+                                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
                                     `:`
                                         ${searchClinet ? 
-                                          `clients.city LIKE '%${searchClinet}%'`:`users.full_name LIKE '%${searchEmployee}%'`
+                                          `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
+                                          // `clients.city LIKE '%${searchClinet}%'`:`users.full_name LIKE '%${searchEmployee}%'`
                                         }
                                           
                                     `
@@ -373,8 +375,54 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                     ${offset ? `OFFSET ${offset}`:""}
                 `:''}
                 `
+  */
+
+  query = `SELECT
+                product_tracking.id,
+                product_tracking.employee_id AS employeeId,
+                COALESCE(product_tracking.product_id, transactions.product_id ) AS	productId,
+                COALESCE(product_tracking.client_id, transactions.client_id ) AS clientId,
+                product_tracking.observed_at AS observedAt,
+                product_tracking.status,
+                clients.name AS clientName,
+                clients.trade_name AS tradeName,
+                MAX(transactions.receipt_date) AS receiptDate,
+                items.name AS itemName,
+                items.id AS itemId,
+                users.full_name AS employeeName
+                FROM transactions
+                LEFT JOIN  products ON transactions.product_id = products.id
+                LEFT JOIN items ON products.item_id = items.id
+                LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
+                LEFT JOIN users ON users.id = product_tracking.employee_id
+                JOIN clients ON clients.id = transactions.client_id
+                WHERE products.location = 2
+
+                ${search ? `AND (
+                  ${searchClinet && searchEmployee && searchItem ? `
+                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
+                    `:`
+                        ${searchClinet ? 
+                          `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
+                        }
+                          
+                    `
+                  }
+                )`:''}
+
+                ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
+                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
+
+
+                GROUP BY COALESCE(product_tracking.id, transactions.id)
+                ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
+                ${!limtLess ? `
+                    LIMIT ${limit} 
+                    ${offset ? `OFFSET ${offset}`:""}
+                `:''}
+          `
+  
                 console.log("🚀 ~ file: Products.controller.js:355 ~ query:", query)
-                // ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
   return next()
 }
 controllers.deleteTracked = (req, res)=>{
