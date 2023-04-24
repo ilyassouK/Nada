@@ -425,7 +425,9 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                           clients.trade_name,
                           items.name,
                           items.id,
-                          users.full_name
+                          users.full_name, 
+                          product_tracking.created_at,
+                          transactions.created_at
                 ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
