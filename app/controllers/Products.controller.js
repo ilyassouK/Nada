@@ -412,19 +412,21 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
 
                 ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
-
-
-                GROUP BY product_tracking.product_id, 
-                        transactions.product_id,
-                        product_tracking.id,
-                        product_tracking.employee_id,
-                        product_tracking.observed_at,
-                        product_tracking.status,
-                        clients.name,
-                        clients.trade_name,
-                        items.name,
-                        items.id,
-                        users.full_name
+                
+                GROUP BY product_tracking.id,
+                          product_tracking.employee_id,
+                          product_tracking.product_id,
+                          transactions.product_id,
+                          product_tracking.client_id,
+                          transactions.client_id,
+                          product_tracking.observed_at,
+                          product_tracking.status,
+                          clients.name,
+                          clients.trade_name,
+                          MAX(transactions.receipt_date),
+                          items.name,
+                          items.id,
+                          users.full_name
                 ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
