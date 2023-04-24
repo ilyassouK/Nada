@@ -423,7 +423,6 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                           product_tracking.status,
                           clients.name,
                           clients.trade_name,
-                          MAX(transactions.receipt_date),
                           items.name,
                           items.id,
                           users.full_name
