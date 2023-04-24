@@ -414,7 +414,9 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
 
 
-                GROUP BY COALESCE(product_tracking.product_id, transactions.product_id),
+                GROUP BY product_tracking.product_id, 
+                        transactions.product_id,
+                        product_tracking.id,
                         product_tracking.employee_id,
                         product_tracking.observed_at,
                         product_tracking.status,
