@@ -378,28 +378,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                       LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
                       LEFT JOIN users ON users.id = product_tracking.employee_id
                       JOIN clients ON clients.id = transactions.client_id
-                      WHERE products.location = 2
-                      ${search ? `AND (
-                        ${searchClinet && searchEmployee && searchItem ? `
-                              clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
-                          `:`
-                              ${searchClinet ? 
-                                `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
-                              }
-                                
-                          `
-                        }
-                      )`:''}
-
-                      ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
-                      ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
-
-
-                      GROUP BY product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
-                                product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
-                                transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
-
-                      ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC`;
+                      WHERE products.location = 2`
   const selectTotalRows = `SELECT COUNT(*) AS totalRows ${commonQuery}`;
   const selectColumns = `SELECT
                 product_tracking.id,
@@ -407,14 +386,28 @@ controllers.fetchAttendedProducts = (req, res)=>{
                 COALESCE(product_tracking.product_id, transactions.product_id ) AS	productId,
                 COALESCE(product_tracking.client_id, transactions.client_id ) AS clientId,
                 product_tracking.observed_at AS observedAt,
-                product_tracking.status,
+                COALESCE(product_tracking.status, 'لم يُحضر بعد') AS status,
+                COALESCE(users.full_name, 'لم يُحضر بعد') AS employeeName,
                 clients.name AS clientName,
                 clients.trade_name AS tradeName,
                 MAX(transactions.receipt_date) AS receiptDate,
                 items.name AS itemName,
-                items.id AS itemId,
-                users.full_name AS employeeName
+                items.id AS itemId
                 ${commonQuery}
+                ${search ? `
+                  AND ${searchClinet ? `clients.city LIKE '%${searchClinet}%'` : "1=1"}
+                  AND ${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'` : "1=1"}
+                  AND ${searchItem ? `items.name LIKE '%${searchItem}%'` : "1=1"}
+                `: ''}
+
+                ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
+                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
+
+                GROUP BY product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
+                          product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
+                          transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
+
+                ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
                     ${offset ? `OFFSET ${offset}`:""}
@@ -424,7 +417,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
   dataBase.query(selectTotalRows, (error, data)=>{
     console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
-    if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها1.', selectTotalRows:selectTotalRows});
+    if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها1.'});
     totalRows = data[0].totalRows
     // Data query
     dataBase.query(selectColumns, (error, data)=>{
