@@ -378,7 +378,28 @@ controllers.fetchAttendedProducts = (req, res)=>{
                       LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
                       LEFT JOIN users ON users.id = product_tracking.employee_id
                       JOIN clients ON clients.id = transactions.client_id
-                      WHERE products.location = 2`
+                      WHERE products.location = 2
+                      ${search ? `AND (
+                        ${searchClinet && searchEmployee && searchItem ? `
+                              clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
+                          `:`
+                              ${searchClinet ? 
+                                `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
+                              }
+                                
+                          `
+                        }
+                      )`:''}
+
+                      ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
+                      ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
+
+
+                      GROUP BY product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
+                                product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
+                                transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
+
+                      ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC`;
   const selectTotalRows = `SELECT COUNT(*) AS totalRows ${commonQuery}`;
   const selectColumns = `SELECT
                 product_tracking.id,
@@ -394,27 +415,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
                 items.id AS itemId,
                 users.full_name AS employeeName
                 ${commonQuery}
-                ${search ? `AND (
-                  ${searchClinet && searchEmployee && searchItem ? `
-                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
-                    `:`
-                        ${searchClinet ? 
-                          `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
-                        }
-                          
-                    `
-                  }
-                )`:''}
-
-                ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
-                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
-
-
-                GROUP BY product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
-                          product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
-                          transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
-
-                ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
                     ${offset ? `OFFSET ${offset}`:""}
