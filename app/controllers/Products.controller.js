@@ -123,8 +123,53 @@ controllers.fetchTransactions = (req, res, next)=>{
     let group = queryReq.group; // For client (clients table) || employee (users table)
 
     let previous = queryReq.previous ? JSON.parse(queryReq.previous) : false;
-    let search = queryReq.search
-    let offset = queryReq.offset 
+    let search = queryReq.search;
+    let offset = queryReq.offset;
+
+    let commonQuery = `FROM transactions 
+                          JOIN products ON products.id = transactions.product_id
+                          JOIN items ON items.id = products.item_id
+                          ${group == 1 ? 
+                            `JOIN users ON users.id = transactions.employee_id
+                            WHERE transactions.employee_id = ${id}`
+                            :
+                            `JOIN clients ON clients.id = transactions.client_id
+                            WHERE transactions.client_id = ${id}`
+                          }
+                          ${search ? `AND (items.name LIKE '%${search}%' OR transactions.product_id LIKE '%${search}%') `:''}
+                          ${previous ? 'AND return_date IS NOT NULL':'AND return_date IS NULL'}
+                          ORDER BY transactions.created_at DESC`;
+    let countQuery = `SELECT COUNT(transactions.id) AS totalRows ${commonQuery}`;
+    let selectQuery = `SELECT
+                          transactions.id,
+                          transactions.product_id AS productId,
+                          transactions.employee_id AS employeeId,
+                          transactions.client_id AS clientId,
+                          transactions.receipt_date AS receiptDate,
+                          transactions.return_date AS returnDate,
+                          transactions.status, 
+                          ${group == 1 ? `users.full_name AS employeeName,`:`clients.trade_name AS tradeName,`}
+                          items.id AS itemId,
+                          items.name AS itemName
+                          ${commonQuery}
+                          LIMIT ${limit} 
+                          ${offset ? `OFFSET ${offset}`:""}
+                          `;
+
+    let totalRows;
+    dataBase.query(countQuery, (error, data)=>{
+        if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+        if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+        totalRows = data[0].totalRows
+        // Data query
+        dataBase.query(selectQuery, (error, data)=>{
+            if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+            if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+            return res.json({success:true, totalRows:totalRows, rows: data})
+        })
+    })
+                      
+    /*
     query = `SELECT
                 transactions.id,
                 transactions.product_id AS productId,
@@ -153,10 +198,7 @@ controllers.fetchTransactions = (req, res, next)=>{
                 ${offset ? `OFFSET ${offset}`:""}
             `
     return next();
-    // WHERE ${group == 1 ? 'transactions.employee_id':'transactions.client_id'} = ${id}
-
-    // ${search ? `AND (itname LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
-
+    */
 }
 // Excel
 controllers.allTransactionsReport = (req, res, next)=>{
@@ -318,7 +360,7 @@ controllers.attendingProducts = (req, res)=>{
     })
   })
 }
-controllers.fetchAttendedProducts = (req, res, next)=>{
+controllers.fetchAttendedProducts = (req, res)=>{
   let queryReq = req.query;
   let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
   // let search = queryReq.search;
@@ -330,54 +372,15 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
   let offset = queryReq.offset;
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
-  
-  /*
-  query = `SELECT
-                product_tracking.id,
-                product_tracking.employee_id AS employeeId,
-                product_tracking.product_id AS	productId,
-                product_tracking.client_id AS clientId,
-                product_tracking.observed_at AS observedAt,
-                product_tracking.status,
-                items.name AS itemName,
-                items.id AS itemId,
-                MAX(transactions.receipt_date) AS receiptDate,
-                clients.name AS clientName,
-                users.full_name AS employeeName,
-                clients.trade_name AS tradeName
-                FROM product_tracking
-                JOIN products ON product_tracking.product_id = products.id
-                JOIN items ON products.item_id = items.id
-                JOIN transactions ON transactions.product_id = product_tracking.product_id
-                JOIN users ON users.id = product_tracking.employee_id
-                JOIN clients ON clients.id = product_tracking.client_id
-                WHERE 1=1
-                ${search ? `AND (
-                                  ${searchClinet && searchEmployee && searchItem ? `
-                                        clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
-                                    `:`
-                                        ${searchClinet ? 
-                                          `clients.city LIKE '%${searchClinet}%'`: `${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'`: `items.name LIKE '%${searchItem}%'` }`
-                                          // `clients.city LIKE '%${searchClinet}%'`:`users.full_name LIKE '%${searchEmployee}%'`
-                                        }
-                                          
-                                    `
-                                  }
-                                )`:''}
-
-                ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
-                ${dateFrom && dateTo ? `AND product_tracking.observed_at BETWEEN '${dateFrom} 00:00:00' AND '${dateTo} 23:59:59' `:""}
-
-                GROUP BY product_tracking.id
-                ORDER BY product_tracking.created_at DESC
-                ${!limtLess ? `
-                    LIMIT ${limit} 
-                    ${offset ? `OFFSET ${offset}`:""}
-                `:''}
-                `
-  */
-
-  query = `SELECT
+  const commonQuery = `FROM transactions
+                      LEFT JOIN  products ON transactions.product_id = products.id
+                      LEFT JOIN items ON products.item_id = items.id
+                      LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
+                      LEFT JOIN users ON users.id = product_tracking.employee_id
+                      JOIN clients ON clients.id = transactions.client_id
+                      WHERE products.location = 2`
+  const selectTotalRows = `SELECT COUNT(*) AS totalRows ${commonQuery}`;
+  const selectColumns = `SELECT
                 product_tracking.id,
                 product_tracking.employee_id AS employeeId,
                 COALESCE(product_tracking.product_id, transactions.product_id ) AS	productId,
@@ -390,14 +393,7 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
                 items.name AS itemName,
                 items.id AS itemId,
                 users.full_name AS employeeName
-                FROM transactions
-                LEFT JOIN  products ON transactions.product_id = products.id
-                LEFT JOIN items ON products.item_id = items.id
-                LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
-                LEFT JOIN users ON users.id = product_tracking.employee_id
-                JOIN clients ON clients.id = transactions.client_id
-                WHERE products.location = 2
-
+                ${commonQuery}
                 ${search ? `AND (
                   ${searchClinet && searchEmployee && searchItem ? `
                         clients.city LIKE '%${searchClinet}%' AND users.full_name LIKE '%${searchEmployee}%' AND items.name LIKE '%${searchItem}%'
@@ -415,18 +411,28 @@ controllers.fetchAttendedProducts = (req, res, next)=>{
 
 
                 GROUP BY product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
-         product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
-         transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
+                          product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
+                          transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
 
                 ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
                 ${!limtLess ? `
                     LIMIT ${limit} 
                     ${offset ? `OFFSET ${offset}`:""}
-                `:''}
-          `
-  
-                console.log("🚀 ~ file: Products.controller.js:355 ~ query:", query)
-  return next()
+                `:''}`
+
+  let totalRows;
+  dataBase.query(selectTotalRows, (error, data)=>{
+    console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
+    if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+    if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها1.', selectTotalRows:selectTotalRows});
+    totalRows = data[0].totalRows
+    // Data query
+    dataBase.query(selectColumns, (error, data)=>{
+      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+      if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+      return res.json({success:true, totalRows:totalRows, rows: data})
+    })
+  })
 }
 controllers.deleteTracked = (req, res)=>{
   let ids = req.body.ids;

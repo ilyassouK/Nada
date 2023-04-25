@@ -83,9 +83,46 @@ controllers.fetchUsers = (req, res, next)=>{
     let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
     let search = queryReq.search
     let offset = queryReq.offset 
-    let role = queryReq.role == "employee" ? 3 : queryReq.role == "admin" ? 1 : queryReq.role == "storekeeper" ? 2 : undefined
-    console.log("🚀 ~ file: Users.controller.js:86 ~ queryReq.role:", queryReq.role)
+    let role = queryReq.role == "employee" ? 3 : queryReq.role == "admin" ? 1 : queryReq.role == "storekeeper" ? 2 : undefined;
 
+    let commonQuery = `FROM users
+                            WHERE id != ${id}
+                            ${role ? `AND role = ${role}`:''}
+                            ${search ? `AND (username LIKE '%${search}%' OR civil LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
+                            ORDER BY created_at DESC`;
+    let countQuery = `SELECT COUNT(users.id) AS totalRows ${commonQuery}`;
+    let selectQuery = `SELECT
+                            id,
+                            role,
+                            username,
+                            first_name AS firstName,
+                            parent_name AS parentName,
+                            grand_father AS grandFather,
+                            familly_name AS famillyName,
+                            civil,
+                            phone,
+                            email
+                            ${commonQuery}
+                            ${!limtLess ? `
+                                LIMIT ${limit} 
+                                ${offset ? `OFFSET ${offset}`:""}
+                            `:''}
+                            `;
+    let totalRows;
+    dataBase.query(countQuery, (error, data)=>{
+        console.log("🚀 ~ file: Users.controller.js:114 ~ dataBase.query ~ error:", error)
+        if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+        if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+        totalRows = data[0].totalRows
+        // Data query
+        dataBase.query(selectQuery, (error, data)=>{
+            if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+            if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+            return res.json({success:true, totalRows:totalRows, rows: data})
+        })
+    })
+    
+/*
     query = `SELECT
                 id,
                 role,
@@ -108,6 +145,7 @@ controllers.fetchUsers = (req, res, next)=>{
             `:''}
             `;
     return next();
+*/
 }
 controllers.deleteUsers = (req, res)=>{
     let ids = req.body.ids;

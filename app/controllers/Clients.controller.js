@@ -30,6 +30,38 @@ controllers.fetchClients = (req, res, next)=>{
     let search = queryReq.search
     let offset = queryReq.offset 
 
+    let commonQuery = `FROM clients
+                            ${search ? `WHERE (trade_name LIKE '%${search}%' OR name LIKE '%${search}%' OR commercial_num LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
+                            ORDER BY created_at DESC
+                            `;
+    let countQuery = `SELECT COUNT(id) AS totalRows ${commonQuery}`;
+    let selectQuery = `SELECT
+                            id,
+                            name,
+                            trade_name AS tradeName,
+                            commercial_num AS commercialNum,
+                            city,
+                            phone 
+                            ${commonQuery}
+                            ${!limtLess ? `
+                                LIMIT ${limit} 
+                                ${offset ? `OFFSET ${offset}`:""}
+                            `:''}
+                        `;
+    let totalRows;
+    dataBase.query(countQuery, (error, data)=>{
+        console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
+        if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+        if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+        totalRows = data[0].totalRows
+        // Data query
+        dataBase.query(selectQuery, (error, data)=>{
+            if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+            if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+            return res.json({success:true, totalRows:totalRows, rows: data})
+        })
+    })
+    /*
     query = `SELECT
                 id,
                 name,
@@ -46,6 +78,7 @@ controllers.fetchClients = (req, res, next)=>{
             `:''}
             `;
     return next();
+    */
 }
 controllers.selectClients = (req, res, next)=>{
     query = "SELECT id, city, trade_name AS tradeName FROM clients WHERE active = 1"

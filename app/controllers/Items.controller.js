@@ -80,12 +80,46 @@ controllers.addItem = (req, res)=>{
     });
 
 }
-controllers.warehouseItems = (req, res, next)=>{
+controllers.warehouseItems = (req, res)=>{
   let queryReq = req.query;
   let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
-  let search = queryReq.search
-  let offset = queryReq.offset 
+  let search = queryReq.search;
+  let offset = queryReq.offset; 
 
+  let commonQuery = `FROM items
+                      ${search ? `WHERE (name LIKE '%${search}%' OR id LIKE '%${search}%') `:''}
+                      ORDER BY created_at DESC`;
+  let countQuery = `SELECT COUNT(id) AS totalRows ${commonQuery}`;
+  let selectQuery = `SELECT
+                      id,
+                      name,
+                      quantity,
+                      quantityOut,
+                      (quantity - quantityOut) AS restQuantity,
+                      unit,
+                      unit_price AS unitPrice,
+                      total_price AS totalPrice 
+                      ${commonQuery}
+                      ${!limtLess ? `
+                          LIMIT ${limit} 
+                          ${offset ? `OFFSET ${offset}`:""}
+                      `:''}
+                      `;
+  let totalRows;
+  dataBase.query(countQuery, (error, data)=>{
+      console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
+      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+      if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+      totalRows = data[0].totalRows
+      // Data query
+      dataBase.query(selectQuery, (error, data)=>{
+          if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+          if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
+          return res.json({success:true, totalRows:totalRows, rows: data})
+      })
+  })
+
+  /*
   query = `SELECT
               id,
               name,
@@ -104,6 +138,7 @@ controllers.warehouseItems = (req, res, next)=>{
           `:''}
           `;
   return next();
+  */
 }
 controllers.selectItems = (req, res, next)=>{
     query = "SELECT id, name, quantity, quantityOut FROM items WHERE active = 1"
