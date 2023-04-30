@@ -370,24 +370,45 @@ controllers.fetchAttendedProducts = (req, res)=>{
   let search = queryReq.searchClinet || queryReq.searchEmployee || queryReq.searchItem;
   
   let offset = queryReq.offset;
+  /*
   let dateFrom = queryReq.dateFrom;
   let dateTo = queryReq.dateTo;
+  */
+  /*
   const commonQuery = `FROM transactions
                       LEFT JOIN  products ON transactions.product_id = products.id
                       LEFT JOIN items ON products.item_id = items.id
                       LEFT JOIN product_tracking ON transactions.product_id = product_tracking.product_id
                       LEFT JOIN users ON users.id = product_tracking.employee_id
                       JOIN clients ON clients.id = transactions.client_id
-                      WHERE products.location = 2`
-  const selectTotalRows = `SELECT COUNT(*) AS totalRows ${commonQuery}`;
+                      WHERE products.location = 2`;
+                      */
+  const commonQuery = `FROM products
+                        JOIN items ON items.id = products.item_id
+                        JOIN transactions on transactions.product_id = products.id
+                        JOIN clients ON clients.id = transactions.client_id
+                        LEFT JOIN product_tracking ON product_tracking.product_id = products.id
+                        LEFT JOIN users ON users.id = product_tracking.employee_id
+                        WHERE products.location = 2
+                        ${search ? `
+                        AND ${searchClinet ? `clients.city LIKE '%${searchClinet}%'` : "1=1"}
+                        AND ${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'` : "1=1"}
+                        AND ${searchItem ? `items.name LIKE '%${searchItem}%'` : "1=1"}
+                      `: ''}
+
+                      ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
+                    `;
+
+  const selectTotalRows = `SELECT COUNT(DISTINCT products.id) AS totalRows ${commonQuery} `;
+  /*
   const selectColumns = `SELECT
                 product_tracking.id,
                 product_tracking.employee_id AS employeeId,
                 COALESCE(product_tracking.product_id, transactions.product_id ) AS	productId,
                 COALESCE(product_tracking.client_id, transactions.client_id ) AS clientId,
                 product_tracking.observed_at AS observedAt,
-                COALESCE(product_tracking.status, 'لم يُحضر بعد') AS status,
-                COALESCE(users.full_name, 'لم يُحضر بعد') AS employeeName,
+                COALESCE(product_tracking.status, 'لم يُحضر') AS status,
+                COALESCE(users.full_name, 'لم يُحضر') AS employeeName,
                 clients.name AS clientName,
                 clients.trade_name AS tradeName,
                 MAX(transactions.receipt_date) AS receiptDate,
@@ -412,6 +433,23 @@ controllers.fetchAttendedProducts = (req, res)=>{
                     LIMIT ${limit} 
                     ${offset ? `OFFSET ${offset}`:""}
                 `:''}`
+                */
+  const selectColumns = `SELECT 
+                          products.id AS id, products.item_id AS itemId, 
+                          items.name AS itemName,
+                          MAX(product_tracking.observed_at) AS observedAt, COALESCE(product_tracking.status, 'لم يُحضر') AS status, product_tracking.employee_id  AS employeeId,
+                          transactions.receipt_date AS receiptDate, transactions.client_id AS clientId,
+                          clients.name AS clientName, clients.trade_name AS tradeName,
+                          COALESCE(users.full_name, 'لم يُحضر') AS employeeName
+                          ${commonQuery}
+
+                          GROUP BY products.id
+                          ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
+
+                          ${!limtLess ? `
+                              LIMIT ${limit} 
+                              ${offset ? `OFFSET ${offset}`:""}
+                          `:''}`
 
   let totalRows;
   dataBase.query(selectTotalRows, (error, data)=>{
