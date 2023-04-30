@@ -442,17 +442,12 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           clients.name AS clientName, clients.trade_name AS tradeName,
                           COALESCE(users.full_name, 'لم يُحضر') AS employeeName
                           ${commonQuery}
-                          GROUP BY products.id, 
-                          products.item_id, 
-                          items.name,
-                          product_tracking.employee_id,
-                          transactions.receipt_date, 
-                          transactions.client_id,
-                          clients.name, 
-                          clients.trade_name,
-                          users.full_name
-                          
+
+                          GROUP BY products.id, product_tracking.id, product_tracking.employee_id, product_tracking.product_id, product_tracking.client_id, 
+                          product_tracking.observed_at, product_tracking.status, clients.name, clients.trade_name, 
+                          transactions.receipt_date, items.name, items.id, users.full_name, transactions.id, transactions.client_id
                           ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
+
                           ${!limtLess ? `
                               LIMIT ${limit} 
                               ${offset ? `OFFSET ${offset}`:""}
