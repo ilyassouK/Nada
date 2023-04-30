@@ -459,6 +459,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
     totalRows = data[0].totalRows
     // Data query
     dataBase.query(selectColumns, (error, data)=>{
+      console.log("🚀 ~ file: Products.controller.js:462 ~ dataBase.query ~ error:", error)
       if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
       if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
       return res.json({success:true, totalRows:totalRows, rows: data})
