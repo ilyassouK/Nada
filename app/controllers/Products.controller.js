@@ -437,7 +437,8 @@ controllers.fetchAttendedProducts = (req, res)=>{
   const selectColumns = `SELECT 
                           products.id AS id, products.item_id AS itemId, 
                           items.name AS itemName,
-                          MAX(product_tracking.observed_at) AS observedAt, COALESCE(product_tracking.status, 'لم يُحضر') AS status, product_tracking.employee_id  AS employeeId,
+                          COALESCE(MAX(product_tracking.observed_at), 'null') AS observedAt, 
+                          COALESCE(product_tracking.status, 'لم يُحضر') AS status, product_tracking.employee_id  AS employeeId,
                           transactions.receipt_date AS receiptDate, transactions.client_id AS clientId,
                           clients.name AS clientName, clients.trade_name AS tradeName,
                           COALESCE(users.full_name, 'لم يُحضر') AS employeeName
