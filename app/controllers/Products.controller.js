@@ -393,7 +393,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           JOIN transactions t ON p.id = t.product_id
                           JOIN clients c ON t.client_id = c.id
                           LEFT JOIN (
-                            SELECT product_id, MAX(observed_at) AS observed_at, status AS status, employee_id AS employee_id
+                            SELECT product_id, MAX(observed_at) AS observed_at, MAX(status) AS status, MAX(employee_id) AS employee_id
                             FROM product_tracking
                             GROUP BY product_id
                           ) pt ON p.id = pt.product_id
@@ -447,7 +447,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             p.id AS id,
                             p.item_id AS itemId,
                             i.name AS itemName,
-                            COALESCE(pt.observed_at, '') AS observedAt,
+                            COALESCE(pt.observed_at, 'لم يُحضر') AS observedAt,
                             COALESCE(pt.status, 'لم يُحضر') AS status,
                             pt.employee_id AS employeeId,
                             t.receipt_date AS receiptDate,
@@ -466,6 +466,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           `:''}`
 
   let totalRows;
+  console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
   dataBase.query(selectTotalRows, (error, data)=>{
     console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
