@@ -405,7 +405,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                         AND ${searchItem ? `i.name LIKE '%${searchItem}%'` : "1=1"}
                       `: ''}
 
-                      ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
+                      ${tokenData.userType == 'employee' ? `AND pt.employee_id = ${tokenData.id}`:''}
                     `;
 
   const selectTotalRows = `SELECT COUNT(DISTINCT p.id) AS totalRows ${commonQuery} `;
