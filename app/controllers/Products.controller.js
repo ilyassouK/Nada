@@ -447,7 +447,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             p.id AS id,
                             p.item_id AS itemId,
                             i.name AS itemName,
-                            COALESCE(pt.observed_at, 'لم يُحضر') AS observedAt,
+                            COALESCE(pt.observed_at, '') AS observedAt,
                             COALESCE(pt.status, 'لم يُحضر') AS status,
                             pt.employee_id AS employeeId,
                             t.receipt_date AS receiptDate,
