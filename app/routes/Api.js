@@ -74,7 +74,7 @@ router.get('/v1/clients/path2', managersToken, selectClients, nextDbProccess);
 router.post('/v1/clients/path3', adminToken, deleteClients); //حذف 
 router.get('/v1/clients/path4/:id', verifyToken, fetchOneClient) // fetchOne
 router.post('/v1/clients/path5/:id', managersToken, updateOneClient) // updateOneClient
-router.get('/v1/clients/path6', managersToken, selectaddresses, nextDbProccess); // used in AddClient.vue(on add), Observed.vue & ProductsDelivery.vue(filter)
+router.get('/v1/clients/path6', verifyToken, selectaddresses, nextDbProccess); // used in AddClient.vue(on add), Observed.vue & ProductsDelivery.vue(filter)
 router.post('/v1/clients/path7', adminToken, upload.single('file'), addExcelClients); // Excel Clients 
 
 // ==================================================================================
