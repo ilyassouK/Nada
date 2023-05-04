@@ -383,23 +383,32 @@ controllers.fetchAttendedProducts = (req, res)=>{
                       JOIN clients ON clients.id = transactions.client_id
                       WHERE products.location = 2`;
                       */
-  const commonQuery = `FROM products
-                        JOIN items ON items.id = products.item_id
-                        JOIN transactions on transactions.product_id = products.id
-                        JOIN clients ON clients.id = transactions.client_id
-                        LEFT JOIN product_tracking ON product_tracking.product_id = products.id
-                        LEFT JOIN users ON users.id = product_tracking.employee_id
-                        WHERE products.location = 2
+  const commonQuery = `FROM
+                          (
+                            SELECT id, item_id
+                            FROM products
+                            WHERE location = 2
+                          ) p
+                          JOIN items i ON p.item_id = i.id
+                          JOIN transactions t ON p.id = t.product_id
+                          JOIN clients c ON t.client_id = c.id
+                          LEFT JOIN (
+                            SELECT product_id, MAX(observed_at) AS observed_at, status AS status, employee_id AS employee_id
+                            FROM product_tracking
+                            GROUP BY product_id
+                          ) pt ON p.id = pt.product_id
+                          LEFT JOIN users u ON pt.employee_id = u.id
+                          WHERE 1=1
                         ${search ? `
-                        AND ${searchClinet ? `clients.city LIKE '%${searchClinet}%'` : "1=1"}
-                        AND ${searchEmployee ? `users.full_name LIKE '%${searchEmployee}%'` : "1=1"}
-                        AND ${searchItem ? `items.name LIKE '%${searchItem}%'` : "1=1"}
+                        AND ${searchClinet ? `c.city LIKE '%${searchClinet}%'` : "1=1"}
+                        AND ${searchEmployee ? `u.full_name LIKE '%${searchEmployee}%'` : "1=1"}
+                        AND ${searchItem ? `i.name LIKE '%${searchItem}%'` : "1=1"}
                       `: ''}
 
                       ${tokenData.userType == 'employee' ? `AND product_tracking.employee_id = ${tokenData.id}`:''}
                     `;
 
-  const selectTotalRows = `SELECT COUNT(DISTINCT products.id) AS totalRows ${commonQuery} `;
+  const selectTotalRows = `SELECT COUNT(DISTINCT p.id) AS totalRows ${commonQuery} `;
   /*
   const selectColumns = `SELECT
                 product_tracking.id,
@@ -434,18 +443,22 @@ controllers.fetchAttendedProducts = (req, res)=>{
                     ${offset ? `OFFSET ${offset}`:""}
                 `:''}`
                 */
-  const selectColumns = `SELECT 
-                          products.id AS id, products.item_id AS itemId, 
-                          items.name AS itemName,
-                          COALESCE(MAX(product_tracking.observed_at), 'null') AS observedAt, 
-                          COALESCE(product_tracking.status, 'لم يُحضر') AS status, product_tracking.employee_id  AS employeeId,
-                          transactions.receipt_date AS receiptDate, transactions.client_id AS clientId,
-                          clients.name AS clientName, clients.trade_name AS tradeName,
-                          COALESCE(users.full_name, 'لم يُحضر') AS employeeName
+  const selectColumns = `SELECT
+                            p.id AS id,
+                            p.item_id AS itemId,
+                            i.name AS itemName,
+                            COALESCE(pt.observed_at, '') AS observedAt,
+                            COALESCE(pt.status, 'لم يُحضر') AS status,
+                            pt.employee_id AS employeeId,
+                            t.receipt_date AS receiptDate,
+                            t.client_id AS clientId,
+                            c.name AS clientName,
+                            c.trade_name AS tradeName,
+                            COALESCE(u.full_name, 'لم يُحضر') AS employeeName
                           ${commonQuery}
 
-                          GROUP BY products.id
-                          ORDER BY COALESCE(product_tracking.created_at, transactions.created_at) DESC
+                          ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
+
 
                           ${!limtLess ? `
                               LIMIT ${limit} 
