@@ -431,7 +431,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             c.name AS clientName,
                             c.trade_name AS tradeName
                           ${commonQuery}
-                          GROUP BY p.id,pt.observed_at
+                          GROUP BY p.id
                           ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
 
                           ${!limtLess ? `
