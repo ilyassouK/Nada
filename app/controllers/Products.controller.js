@@ -388,13 +388,12 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           LEFT JOIN (
                             SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id
                             FROM product_tracking
-                            GROUP BY product_id, observed_at, status, employee_id
+                            GROUP BY product_id, observed_at
                           ) pt ON p.id = pt.product_id
                           LEFT JOIN (
-                            SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
+                            SELECT product_id, MAX(observed_at) AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            GROUP BY product_id, observed_at, status, employee_id
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
