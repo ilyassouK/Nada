@@ -389,7 +389,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id
                             FROM product_tracking
                             GROUP BY product_id, observed_at
-                            ORDER BY observed_at DESC
                           ) pt ON p.id = pt.product_id
                           LEFT JOIN (
                             SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
