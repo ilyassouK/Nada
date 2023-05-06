@@ -373,8 +373,8 @@ controllers.fetchAttendedProducts = (req, res)=>{
   
   let offset = queryReq.offset;
   /*
-  let dateFrom = queryReq.dateFrom;
-  let dateTo = queryReq.dateTo;
+    Server : ORDER BY observed_at DESC
+    Localhost : ORDER BY observed_at [OR nothing (No ORDER)]
   */
   const commonQuery = `FROM
                           (
