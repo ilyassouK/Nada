@@ -394,8 +394,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, MAX(observed_at) AS searchedDate, MAX(status) AS searchedStatus, MAX(employee_id) AS searchedEmployee
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            GROUP BY product_id, searchedDate
-
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
@@ -415,7 +413,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             i.name AS itemName,
                             CASE
                               WHEN searchedDate IS NULL THEN ${!date ? "COALESCE(pt.observed_at, '')":"''"}
-                              ELSE searchedDate
+                              ELSE MAX(searchedDate)
                             END AS observedAt,
                             
                             CASE
