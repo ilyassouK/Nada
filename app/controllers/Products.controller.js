@@ -437,6 +437,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           `
 
   let totalRows;
+  console.log("OK");
   // console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
   dataBase.query(selectTotalRows, (error, data)=>{
     console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
