@@ -239,7 +239,6 @@ controllers.updateOneUser = (req, res)=>{
     const fullName = firstName + " " + parentName + " " + grandFather + " " + famillyName;
 
     const payload = {
-        role:req.body.role,
         username:username,
         full_name:fullName,
         first_name:firstName,
@@ -250,6 +249,9 @@ controllers.updateOneUser = (req, res)=>{
         civil:req.body.civil,
         phone:req.body.phone,
     }
+    // Only the admin can update the role of users
+    if(tokenData.userType == 'admin' && role) payload.role = role
+
     //Step1: if password : Crypt it
     if(password){
         bcrypt.genSalt(10, (err,salt)=>{

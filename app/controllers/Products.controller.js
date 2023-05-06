@@ -368,6 +368,8 @@ controllers.fetchAttendedProducts = (req, res)=>{
   let searchEmployee = queryReq.searchEmployee;
   let searchItem = queryReq.searchItem;
   let search = queryReq.searchClinet || queryReq.searchEmployee || queryReq.searchItem;
+  let date = queryReq.date;
+  console.log("🚀 ~ file: Products.controller.js:372 ~ date:", date)
   
   let offset = queryReq.offset;
   /*
@@ -384,12 +386,17 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           JOIN transactions t ON p.id = t.product_id
                           JOIN clients c ON t.client_id = c.id
                           LEFT JOIN (
-                            SELECT product_id, MAX(observed_at) AS observed_at, MAX(status) AS status, MAX(employee_id) AS employee_id
+                            SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id
                             FROM product_tracking
-                            GROUP BY product_id
+                            GROUP BY product_id, observed_at
                           ) pt ON p.id = pt.product_id
-                          LEFT JOIN users u ON pt.employee_id = u.id
-                          WHERE 1=1
+                          LEFT JOIN (
+                            SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
+                            FROM product_tracking
+                            WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
+                          ) sd ON p.id = sd.product_id
+                          LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
+                          WHERE 1=1 
                         ${search ? `
                         AND ${searchClinet ? `c.city LIKE '%${searchClinet}%'` : "1=1"}
                         AND ${searchEmployee ? `u.full_name LIKE '%${searchEmployee}%'` : "1=1"}
@@ -404,18 +411,28 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             p.id AS id,
                             p.item_id AS itemId,
                             i.name AS itemName,
-                            COALESCE(pt.observed_at, '') AS observedAt,
-                            COALESCE(pt.status, 'لم يُحضر') AS status,
-                            pt.employee_id AS employeeId,
+                            CASE
+                              WHEN searchedDate IS NULL THEN ${!date ? "COALESCE(pt.observed_at, '')":"''"}
+                              ELSE searchedDate
+                            END AS observedAt,
+                            
+                            CASE
+                              WHEN searchedStatus IS NULL THEN ${!date ? "COALESCE(pt.status, 'لم يُحضر')":"'لم يُحضر'"}
+                              ELSE searchedStatus
+                            END AS status,
+                            CASE
+                              WHEN searchedEmployee IS NULL THEN ${!date ? "COALESCE(u.full_name, 'لم يُحضر')":"'لم يُحضر'"}
+                              ELSE u.full_name
+                            END AS employeeName,
+                            
+                            COALESCE(sd.searchedEmployee, pt.employee_id) AS employeeId,
                             t.receipt_date AS receiptDate,
                             t.client_id AS clientId,
                             c.name AS clientName,
-                            c.trade_name AS tradeName,
-                            COALESCE(u.full_name, 'لم يُحضر') AS employeeName
+                            c.trade_name AS tradeName
                           ${commonQuery}
-
+                          GROUP BY p.id
                           ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
-
 
                           ${!limtLess ? `
                               LIMIT ${limit} 
