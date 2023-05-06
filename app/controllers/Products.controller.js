@@ -394,7 +394,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            GROUP BY product_id, observed_at
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
@@ -432,7 +431,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             c.name AS clientName,
                             c.trade_name AS tradeName
                           ${commonQuery}
-                          GROUP BY p.id
+                          GROUP BY p.id,pt.observed_at
                           ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
 
                           ${!limtLess ? `
