@@ -434,7 +434,10 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           GROUP BY p.id
                           ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
 
-                          `
+                          ${!limtLess ? `
+                              LIMIT ${limit} 
+                              ${offset ? `OFFSET ${offset}`:""}
+                          `:''}`
 
   let totalRows;
   console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
