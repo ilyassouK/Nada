@@ -395,7 +395,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            ORDER BY observed_at DESC
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
