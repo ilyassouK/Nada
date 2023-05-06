@@ -434,13 +434,10 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           GROUP BY p.id
                           ORDER BY COALESCE(pt.observed_at, t.receipt_date) DESC
 
-                          ${!limtLess ? `
-                              LIMIT ${limit} 
-                              ${offset ? `OFFSET ${offset}`:""}
-                          `:''}`
+                          `
 
   let totalRows;
-  console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
+  // console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
   dataBase.query(selectTotalRows, (error, data)=>{
     console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
