@@ -283,9 +283,13 @@ controllers.updateItem = (req, res)=>{
 controllers.itemProducts = (req, res) => {
   /*
     Used to print QR codes of all products of certain Item [Only the products Out warehouse]
-     * Number of records should = number of item's products Out (records = items.QuantityOut)
+     * Number of all records should EQUL number of item's products Out (records = items.QuantityOut)
   */
-  const id = req.params.id;
+ const {limit:maxProducts, offset:setOfProducts} = req.query
+ const id = req.params.id;
+ console.log("🚀 ~ file: Items.controller.js:289 ~ setOfProducts:", setOfProducts)
+ console.log("🚀 ~ file: Items.controller.js:289 ~ maxProducts:", maxProducts)
+ console.log("🚀 ~ file: Items.controller.js:292 ~ id:", id)
   const query = `SELECT
                   transactions.id,
                   transactions.product_id AS productId,
@@ -300,7 +304,10 @@ controllers.itemProducts = (req, res) => {
             WHERE items.id = ?
             AND transactions.return_date IS NULL
             ORDER BY transactions.created_at DESC
+            ${maxProducts ? `LIMIT ${maxProducts} OFFSET ${setOfProducts}`:''}
   `
+  console.log("🚀 ~ file: Items.controller.js:309 ~ query:", query)
+
   dataBase.query(query, [id], (error, data)=>{
     if(error) return res.json({success:false, msg:"حدث خطأ ما اثناء محاولة جلب ارقام المنتجات!"});
     if(!data.length) return res.json({success:false, msg:"عفواً, لم يتم ايجاد اي رموز شريطية لمنتجات هذا الصنف!"});
