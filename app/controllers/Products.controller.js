@@ -333,21 +333,26 @@ controllers.attendingProducts = (req, res)=>{
   if(tokenData.userType != "employee") return res.json({success:false, msg:'Only Employees can make this role'});
 
   const employeeId = tokenData.id;
-  const productId = req.body.productId
+  const productId = req.body.productId;
   const status = req.body.status;
+  const latitude = req.body.latitude;
+  const longitude = req.body.longitude;
 
   // Step1: From the transactions table and based on product_id (barcode) Get the last client_id of that product.
   const findClintQuery = "SELECT client_id FROM transactions WHERE product_id = ? ORDER BY created_at DESC LIMIT 1"
   dataBase.query(findClintQuery, [productId], (error, data)=>{
     if(error) return res.json({success:false, msg:"هناك خطأ ما في إيجاد المحل!"});
     if(!data.length || !data[0].client_id) return res.json({success:false, msg:`عذراً, هذا المنتج (رقم ${productId}) غير مسجل عند اي محل!`})
-    const clientId = data[0].client_id
+    
+    const clientId = data[0].client_id;
 
     let trackData = {
       product_id:productId,
       employee_id:employeeId,
       client_id:clientId,
-      status:status
+      status:status,
+      latitude:latitude,
+      longitude:longitude,
     }
     console.log("🚀 ~ file: Products.controller.js:257 attendingProducts ~ trackData:", trackData)
     const saveTrackQuery = "INSERT INTO product_tracking SET ?"
@@ -355,7 +360,7 @@ controllers.attendingProducts = (req, res)=>{
       console.log(error)
       if(error) return res.json({success:false, msg:"هناك خطأ ما في تسجيل حضور هذا المنتج!"});
       if(data.affectedRows < 1) return res.json({success:false, msg:"فشلت عملية تسجيل حضور هذا المنتج!"});
-      console.log("🚀 ~ file: Products.controller.js:263 attendingProducts ~ data.affectedRows:", data.affectedRows)
+      // console.log("🚀 ~ file: Products.controller.js:263 attendingProducts ~ data.affectedRows:", data.affectedRows)
       res.json({success:true, msg:"رائع, لقد تم تسجيل حضورك على المنتج بنجاح."})
     })
   })
@@ -363,13 +368,11 @@ controllers.attendingProducts = (req, res)=>{
 controllers.fetchAttendedProducts = (req, res)=>{
   let queryReq = req.query;
   let limtLess = queryReq.limtLess ? JSON.parse(queryReq.limtLess) : false; // For the Excel report (to get all rows)
-  // let search = queryReq.search;
   let searchClinet = queryReq.searchClinet;
   let searchEmployee = queryReq.searchEmployee;
   let searchItem = queryReq.searchItem;
   let search = queryReq.searchClinet || queryReq.searchEmployee || queryReq.searchItem;
   let date = queryReq.date;
-  console.log("🚀 ~ file: Products.controller.js:372 ~ date:", date)
   
   let offset = queryReq.offset;
   /*
@@ -386,13 +389,13 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           JOIN transactions t ON p.id = t.product_id
                           JOIN clients c ON t.client_id = c.id
                           LEFT JOIN (
-                            SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id
+                            SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id, latitude AS latitude, longitude AS longitude
                             FROM product_tracking
                             GROUP BY product_id, observed_at
                             ORDER BY observed_at DESC
                           ) pt ON p.id = pt.product_id
                           LEFT JOIN (
-                            SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee
+                            SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee, latitude AS searchedLatitude, longitude AS searchedLongitude
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
                             ORDER BY observed_at DESC
@@ -413,6 +416,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             p.id AS id,
                             p.item_id AS itemId,
                             i.name AS itemName,
+
                             CASE
                               WHEN searchedDate IS NULL THEN ${!date ? "COALESCE(pt.observed_at, '')":"''"}
                               ELSE searchedDate
@@ -422,6 +426,17 @@ controllers.fetchAttendedProducts = (req, res)=>{
                               WHEN searchedStatus IS NULL THEN ${!date ? "COALESCE(pt.status, 'لم يُحضر')":"'لم يُحضر'"}
                               ELSE searchedStatus
                             END AS status,
+                            
+                            CASE
+                              WHEN searchedLatitude IS NULL THEN ${!date ? "COALESCE(pt.latitude, '')":"''"}
+                              ELSE searchedLatitude
+                            END AS latitude,
+
+                            CASE
+                              WHEN searchedLongitude IS NULL THEN ${!date ? "COALESCE(pt.longitude, '')":"''"}
+                              ELSE searchedLongitude
+                            END AS longitude,
+
                             CASE
                               WHEN searchedEmployee IS NULL THEN ${!date ? "COALESCE(u.full_name, 'لم يُحضر')":"'لم يُحضر'"}
                               ELSE u.full_name

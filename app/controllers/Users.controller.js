@@ -229,28 +229,35 @@ controllers.updateOneUser = (req, res)=>{
     // Only admin can update anyone.
     if(tokenData.userType != 'admin' && id != tokenData.id) return res.json({success:false, msg:"Soory, you don't have the permission!"});
 
-    const role = req.body.role;
-    const username = req.body.username;
-    const password = req.body.password;
-    const firstName = req.body.firstName;
-    const parentName = req.body.parentName;
-    const grandFather = req.body.grandFather;
-    const famillyName = req.body.famillyName;
+    // const role = req.body.role;
+    // const username = req.body.username;
+    // const password = req.body.password;
+    // const firstName = req.body.firstName;
+    // const parentName = req.body.parentName;
+    // const grandFather = req.body.grandFather;
+    // const famillyName = req.body.famillyName;
+    const {role, username, civil, phone, password, firstName, parentName, grandFather, famillyName,} = req.body
     const fullName = firstName + " " + parentName + " " + grandFather + " " + famillyName;
 
-    const payload = {
-        username:username,
+    let payload = {
+        // username:username,
         full_name:fullName,
         first_name:firstName,
         parent_name:parentName,
         grand_father:grandFather,
         familly_name:famillyName,
         job_title:req.body.jobTitle || username,
-        civil:req.body.civil,
-        phone:req.body.phone,
+        // civil:req.body.civil,
+        phone:phone,
     }
-    // Only the admin can update the role of users
-    if(tokenData.userType == 'admin' && role) payload.role = role
+    // Only the admin can update the some fields:
+    if(tokenData.userType == 'admin' && role){
+        payload = {
+            ...(role && {role:role}),
+            ...(username && {username:username}),
+            ...(civil && {civil:civil})
+        }
+    }
 
     //Step1: if password : Crypt it
     if(password){
