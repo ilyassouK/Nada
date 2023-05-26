@@ -46,7 +46,6 @@ controllers.AddUser = (req, res)=>{
     // Step1 : Check username doesn't exists before
     let query = "SELECT id FROM users WHERE username = ?";
     dataBase.query(query,[username],(error, results)=>{
-        console.log("🚀 ~ file: Users.controller.js:47 ~ dataBase.query ~ error:", error)
         if(error) return res.json({success:false, msg:"حدث خطأ اثناء إضافة المستخدم, الرجاء المحاولة مجدداً."})
         // Exist
         if(results.length){
@@ -62,7 +61,6 @@ controllers.AddUser = (req, res)=>{
                         //Step3: Insert
                         query = `INSERT INTO users SET ?`;
                         dataBase.query(query, [payload], (error, data)=>{
-                            console.log("🚀 ~ file: Users.controller.js:55 ~ dataBase.query ~ error:", error)
                             if(error) return res.json({success:false, msg:"عذراً. حدث خطأ عند إضافة المستخدم, الرجاء المحاولة مجدداً."});
                             if(!data.affectedRows) return res.json({success:false, msg:"عذراً. فشل إضافة المستخدم, الرجاء المحاولة مجدداً."});
                             
@@ -110,7 +108,6 @@ controllers.fetchUsers = (req, res, next)=>{
                             `;
     let totalRows;
     dataBase.query(countQuery, (error, data)=>{
-        console.log("🚀 ~ file: Users.controller.js:114 ~ dataBase.query ~ error:", error)
         if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
         if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
         totalRows = data[0].totalRows
@@ -199,8 +196,6 @@ controllers.updateOneUser = (req, res)=>{
             WHERE u.username = ? AND u.id != ?
         )`;
         dataBase.query(query, [payload, id, payload.username, id], (error, data)=>{
-                        console.log("🚀 ~ file: Users.controller.js:141 ~ dataBase.query ~ error:", error)
-
             if(error) return res.json({success:false, msg:'عذراً حدث خطأ في تحديث بيانات المستخدم!'});
             if(!data.affectedRows) return res.json({success:false, msg:'معذرة, فشلة عملية تحديث بيانات المستخدم, إحتمال وجود نفس إسم المستخدم الذي ادخلته من قبل!.'});
             res.json({success:true, msg:'تم تحديث بيانات المستخدم بنجاح.'})
@@ -321,10 +316,8 @@ controllers.addExcelUsers = (req, res)=>{
         dataBase.query(insertUsers, [VALUES], (error, results)=>{
             // Delete the file uploaded:
             deleteUploadedExcelFile(fileUploaded);
-            console.log("🚀 ~ file: Users.controller.js:238 ~ dataBase.query ~ error:", error)
             if(error) return res.json({success:false, msg:"حدث خطأ ما في إضافة الحسابات!"});
             if(!results.affectedRows) return res.json({success:false, msg:"فشلة عملية إضافة الحسابات!"});
-            console.log("🚀 ~ file: Users.controller.js:252 ~ dataBase.query ~ results.affectedRows:", results.affectedRows)
             res.json({success:true, msg:"رائع, تم استيراد و تسجيل البيانات بنجاح", existingUsers:existingUsers})
         })        
       

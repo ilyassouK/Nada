@@ -37,7 +37,6 @@ controllers.addItem = (req, res)=>{
         const createItemQuery = "INSERT INTO items SET ?";
         connection.query(createItemQuery, [payload], (error, data)=>{
           if(error){
-            console.log("🚀 ~ file: Items.controller.js:41 ~ connection.query ~ error:", error)
             return connection.rollback(()=>{
               connection.release();
               res.json({success:false, msg:"هناك خطأ ما في إضافة صنف جديد!"})
@@ -107,7 +106,6 @@ controllers.warehouseItems = (req, res)=>{
                       `;
   let totalRows;
   dataBase.query(countQuery, (error, data)=>{
-      console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
       if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
       if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
       totalRows = data[0].totalRows
@@ -206,7 +204,6 @@ controllers.updateItem = (req, res)=>{
     unit_price:unitPrice,
     total_price:req.body.totalPrice,
   }
-  console.log("🚀 ~ file: Items.controller.js:170 ~ payload:", payload)
   dataBase.getConnection((error, connection)=>{
     if(error){
       connection.release();
@@ -222,14 +219,12 @@ controllers.updateItem = (req, res)=>{
       connection.query(updateItemQuery, [payload, id], (error, data)=>{
         
         if(error){
-          console.log("🚀 ~ file: Items.controller.js:183 ~ connection.query ~ error:", error)
           return connection.rollback(()=>{
             connection.release();
             res.json({success:false, msg:"حدث خطأ اثناء عميلة تحديث هذا الصنف!"});
           });
         }
         if(!data.affectedRows){
-          console.log("🚀 ~ file: Items.controller.js:190 ~ connection.query ~ data.affectedRows:", data.affectedRows)
           return connection.rollback(()=>{
             connection.release();
             res.json({success:false, msg:"عفواً فشلة عميلة تحديث هذا الصنف!"});
@@ -287,9 +282,6 @@ controllers.itemProducts = (req, res) => {
   */
  const {limit:maxProducts, offset:setOfProducts} = req.query
  const id = req.params.id;
- console.log("🚀 ~ file: Items.controller.js:289 ~ setOfProducts:", setOfProducts)
- console.log("🚀 ~ file: Items.controller.js:289 ~ maxProducts:", maxProducts)
- console.log("🚀 ~ file: Items.controller.js:292 ~ id:", id)
   const query = `SELECT
                   transactions.id,
                   transactions.product_id AS productId,
@@ -306,7 +298,6 @@ controllers.itemProducts = (req, res) => {
             ORDER BY transactions.created_at DESC
             ${maxProducts ? `LIMIT ${maxProducts} OFFSET ${setOfProducts}`:''}
   `
-  console.log("🚀 ~ file: Items.controller.js:309 ~ query:", query)
 
   dataBase.query(query, [id], (error, data)=>{
     if(error) return res.json({success:false, msg:"حدث خطأ ما اثناء محاولة جلب ارقام المنتجات!"});

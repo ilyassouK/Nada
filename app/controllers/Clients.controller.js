@@ -16,7 +16,6 @@ controllers.AddClient = (req, res)=>{
     let query = "INSERT INTO clients SET ?"
     dataBase.query(query, [payload], (error, data)=>{
         if(error || !data.affectedRows){
-            console.log("🚀 ~ file: Clients.controller.js:20 ~ dataBase.query ~ error:", error)
             return res.json({success:false, msg:"Erro 3: هناك خطأ ما في إضافة المحل!"});
         }
         return res.json({success:true, msg:`رائع, تم إضافة المحل بنجاح.`})
@@ -50,7 +49,6 @@ controllers.fetchClients = (req, res, next)=>{
                         `;
     let totalRows;
     dataBase.query(countQuery, (error, data)=>{
-        console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
         if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
         if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
         totalRows = data[0].totalRows
@@ -116,7 +114,6 @@ controllers.fetchOneClient = (req, res)=>{
             WHERE clients.id = ?
             `
     dataBase.query(query, [id], (error, data)=>{
-        console.log("🚀 ~ file: Clients.controller.js:140 ~ dataBase.query ~ error:", error)
 
         if(error) return res.json({success:false, msg:"هناك خطأ ما في جلب بيانات المحل!"});
         if(!data.length) return res.json({success:false, msg:'عذراً, فشلة عملية جلب بيانات المحل!'});
@@ -189,7 +186,6 @@ controllers.addExcelClients = (req, res)=>{
         dataBase.query(insertClients, [VALUES], (error, results)=>{
             // Delete the file uploaded:
             deleteUploadedExcelFile(fileUploaded);
-            console.log("🚀 ~ file: Clients.controller.js:115 ~ dataBase.query ~ error:", error)
             if(error) return res.json({success:false, msg:"حدث خطأ ما في إضافة الحسابات!"});
             if(!results.affectedRows) return res.json({success:false, msg:"فشلة عملية إضافة الحسابات!"});
             res.json({success:true, msg:"رائع, تم استيراد و تسجيل البيانات بنجاح", existingClients:existingClients})

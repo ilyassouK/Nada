@@ -303,7 +303,6 @@ controllers.returnBackProducts = (req, res, next) => {
           `
           // const updateItemsQuery = `UPDATE items JOIN products ON items.id = products.item_id SET quantityOut = quantityOut - ? WHERE products.id IN (?)`;
           const quantity = productsResult.affectedRows;
-          console.log("🚀 ~ file: Products.controller.js:243 ~ connection.query ~ productsResult.affectedRows:", productsResult.affectedRows)
           connection.query(updateItemsQuery, [quantity, productIds], (error, itemsResult) => {
             if (error) {
               return connection.rollback(() => {
@@ -354,10 +353,8 @@ controllers.attendingProducts = (req, res)=>{
       latitude:latitude,
       longitude:longitude,
     }
-    console.log("🚀 ~ file: Products.controller.js:257 attendingProducts ~ trackData:", trackData)
     const saveTrackQuery = "INSERT INTO product_tracking SET ?"
     dataBase.query(saveTrackQuery, [trackData], (error, data)=>{
-      console.log(error)
       if(error) return res.json({success:false, msg:"هناك خطأ ما في تسجيل حضور هذا المنتج!"});
       if(data.affectedRows < 1) return res.json({success:false, msg:"فشلت عملية تسجيل حضور هذا المنتج!"});
       // console.log("🚀 ~ file: Products.controller.js:263 attendingProducts ~ data.affectedRows:", data.affectedRows)
@@ -375,6 +372,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
   let date = queryReq.date;
   
   let offset = queryReq.offset;
+  const isLocalHost = req.hostname == "localhost" || req.hostname == "127.0.0.1";
   /*
     Server : ORDER BY observed_at DESC
     Localhost : ORDER BY observed_at [OR nothing (No ORDER)]
@@ -392,13 +390,11 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id, latitude AS latitude, longitude AS longitude
                             FROM product_tracking
                             GROUP BY product_id, observed_at
-                            ORDER BY observed_at DESC
                           ) pt ON p.id = pt.product_id
                           LEFT JOIN (
                             SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee, latitude AS searchedLatitude, longitude AS searchedLongitude
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            ORDER BY observed_at DESC
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
@@ -457,16 +453,13 @@ controllers.fetchAttendedProducts = (req, res)=>{
                           `:''}`
 
   let totalRows;
-  console.log("OK");
   // console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
   dataBase.query(selectTotalRows, (error, data)=>{
-    console.log("🚀 ~ file: Products.controller.js:432 ~ dataBase.query ~ error:", error)
     if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
     if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها1.'});
     totalRows = data[0].totalRows
     // Data query
     dataBase.query(selectColumns, (error, data)=>{
-      console.log("🚀 ~ file: Products.controller.js:462 ~ dataBase.query ~ error:", error)
       if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
       if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
       return res.json({success:true, totalRows:totalRows, rows: data})
@@ -475,7 +468,6 @@ controllers.fetchAttendedProducts = (req, res)=>{
 }
 controllers.deleteTracked = (req, res)=>{
   let ids = req.body.ids;
-  console.log("🚀 ~ file: Products.controller.js:288 ~ controllers.deleteTracked ~ ids:", ids)
   let query = "DELETE FROM product_tracking WHERE id IN (?)"
   dataBase.query(query, [ids], (error, data)=>{
     if(error) return res.json({success:false, msg:'عذراً حدث خطأ في الحذف من سجل التحضير!'});
