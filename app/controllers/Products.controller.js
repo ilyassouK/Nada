@@ -389,13 +389,13 @@ controllers.fetchAttendedProducts = (req, res)=>{
                             SELECT product_id, observed_at AS observed_at, status AS status, employee_id AS employee_id, latitude AS latitude, longitude AS longitude
                             FROM product_tracking
                             GROUP BY product_id, observed_at
-                            ORDER BY observed_at
+                            ORDER BY observed_at DESC
                           ) pt ON p.id = pt.product_id
                           LEFT JOIN (
                             SELECT product_id, observed_at AS searchedDate, status AS searchedStatus, employee_id AS searchedEmployee, latitude AS searchedLatitude, longitude AS searchedLongitude
                             FROM product_tracking
                             WHERE observed_at BETWEEN '${date} 00:00:00' AND '${date} 23:59:59'
-                            ORDER BY observed_at
+                            ORDER BY observed_at DESC
                           ) sd ON p.id = sd.product_id
                           LEFT JOIN users u ON u.id = COALESCE(sd.searchedEmployee, pt.employee_id)
                           WHERE 1=1 
@@ -461,7 +461,7 @@ controllers.fetchAttendedProducts = (req, res)=>{
     totalRows = data[0].totalRows
     // Data query
     dataBase.query(selectColumns, (error, data)=>{
-      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
+      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير.", error:error});
       if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
       return res.json({success:true, totalRows:totalRows, rows: data})
     })
