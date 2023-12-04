@@ -107,7 +107,7 @@ controllers.login = (req, res) => {
     let query = `SELECT * FROM users WHERE username = ?`;
     dataBase.query(query, [username],(error, data)=>{
 
-        if(error) return res.json({success:false, msg:'حدث خطأ ما, الرجاء التحقق من الإتصال, و إعادة المحاولة.'})
+        if(error) return res.json({success:false, msg:'حدث خطأ ما, الرجاء التحقق من الإتصال, و إعادة المحاولة.', error:error})
         if(!data.length) return res.json({success:false, msg:'عذراً, لم تدخل إسم المستخدم بشكل صحيح.'})
         // step 2.1: Compare password
         bcrypt.compare(password, data[0].password, (err, isMatch) => {
