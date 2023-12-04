@@ -16,7 +16,7 @@ app.use('/api', apiRoutes)
 app.use('/auth', authRoutes)
 
 app.use(express.static(__dirname + '/public/'));
-app.get(/.*/, (req, res) => res.sendFile(__dirname + '/public/index.html'));
+app.get('*', (req, res) => res.sendFile(__dirname + '/public/index.html'));
 
 const PORT = process.env.PORT || 1880;
 app.listen(PORT, ()=>{
