@@ -456,12 +456,12 @@ controllers.fetchAttendedProducts = (req, res)=>{
   let totalRows;
   // console.log("🚀 ~ file: Products.controller.js:470 ~ dataBase.query ~ selectTotalRows:", selectColumns)
   dataBase.query(selectTotalRows, (error, data)=>{
-    if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير."});
+    if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب عدد سجل التحضير.", error:error});
     if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها1.'});
     totalRows = data[0].totalRows
     // Data query
     dataBase.query(selectColumns, (error, data)=>{
-      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير.!", error:error});
+      if(error) return res.json({success:false, msg:"حدث خطأ ما في جلب سجل التحضير."});
       if(!data.length) return res.json({success:false, msg:'لم يتم إيجاد اي معلومات لعرضها.'});
       return res.json({success:true, totalRows:totalRows, rows: data})
     })
