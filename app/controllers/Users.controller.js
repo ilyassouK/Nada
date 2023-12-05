@@ -175,7 +175,8 @@ controllers.fetchOneUser = (req, res)=>{
                         phone,
                         civil,
                         email,
-                        active
+                        active,
+                        role
                     FROM users WHERE id = ?
     `;
     dataBase.query(query, [id], (error, data)=>{
